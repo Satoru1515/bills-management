@@ -9,7 +9,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - Si una tarea no se puede completar (falta una credencial, una decisión de Satoru, red bloqueada), se marca `- [~]` con una nota y se pasa a la siguiente que no dependa de ella.
 - Decisiones de diseño y convenciones: ver `CLAUDE.md`. Formato de los correos y reglas de categorías: ver `docs/parsing-spec.md`.
 
-## Fase 0 — Scaffold  (rama `fase/0-scaffold`)
+## Fase 0 — Scaffold  (rama `fase/0-scaffold`) [PR abierto]
 
 - [x] Crear proyecto Next.js 15 (App Router, TypeScript, Tailwind, ESLint) en la raíz del repo con `npx create-next-app@latest . --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes`. Si la red está bloqueada, anotarlo y parar.
 - [x] Añadir Prettier, Vitest (+ `@testing-library/react`) y scripts `test`, `lint`, `format`, `typecheck` en package.json. `npm run typecheck` = `tsc --noEmit`.
