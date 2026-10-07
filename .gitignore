@@ -5,6 +5,7 @@ dist/
 coverage/
 .env
 .env*.local
+!.env.example
 *.log
 .DS_Store
 Thumbs.db

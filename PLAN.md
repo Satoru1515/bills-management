@@ -13,7 +13,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 
 - [x] Crear proyecto Next.js 15 (App Router, TypeScript, Tailwind, ESLint) en la raíz del repo con `npx create-next-app@latest . --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes`. Si la red está bloqueada, anotarlo y parar.
 - [x] Añadir Prettier, Vitest (+ `@testing-library/react`) y scripts `test`, `lint`, `format`, `typecheck` en package.json. `npm run typecheck` = `tsc --noEmit`.
-- [ ] `.env.example` con todas las variables que usará la app (ver CLAUDE.md) y `.gitignore` que excluya `.env*.local`.
+- [x] `.env.example` con todas las variables que usará la app (ver CLAUDE.md) y `.gitignore` que excluya `.env*.local`.
 - [ ] README.md en inglés: qué hace, stack, cómo correr local, variables de entorno, estructura de carpetas.
 - [ ] Verificar que `npm run lint`, `npm run typecheck` y `npm test` pasan en limpio. Cerrar fase: PR.
 
