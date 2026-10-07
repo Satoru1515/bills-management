@@ -11,3 +11,10 @@ Thumbs.db
 .vercel
 android/app/build/
 ios/App/Pods/
+/build
+.pnp
+.pnp.*
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
