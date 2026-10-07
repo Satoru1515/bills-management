@@ -24,7 +24,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] `src/lib/parsers/apap.ts` + tests (tabla Fecha/Hora/Moneda/Monto/Comercio/Estado; ignorar OTP y pagos).
 - [x] `src/lib/parsers/bsc.ts` (Banco Santa Cruz) + tests (Monto RD$/US$, Lugar, Fecha y hora; ignorar transferencias y cashback).
 - [x] `src/lib/parsers/paypal.ts` + tests (You paid X USD to Y, Transaction date, Visa-####).
-- [ ] `src/lib/parsers/index.ts`: `parseEmail(raw): ParsedEmail | null` que elige el parser por remitente. Test de integración con un correo de cada banco.
+- [x] `src/lib/parsers/index.ts`: `parseEmail(raw): ParsedEmail | null` que elige el parser por remitente. Test de integración con un correo de cada banco.
 - [ ] `src/lib/domain/categorize.ts`: reglas por palabra clave (ver parsing-spec) + tests. Debe ser fácil añadir reglas desde la base de datos más adelante.
 - [ ] `src/lib/domain/dedupe.ts`: colapsa los correos repetidos de Scotiabank (misma tarjeta, monto, moneda, comercio y hora ±2 min) + tests.
 - [ ] Cerrar fase: todo verde, PR.
