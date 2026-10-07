@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  CARD_ENDING_RE,
   combineReceivedDateWithTime,
   formatDrIso,
+  isApprovedStatus,
   monthOf,
   normalizeText,
   parse24HourTime,
   parseAmount,
+  parseAmountWithPrefix,
   parseDayMonthYear,
+  readField,
   to24Hour,
   toDrParts,
+  toPlainLines,
 } from "./shared";
 
 describe("normalizeText", () => {
@@ -129,5 +134,80 @@ describe("parse24HourTime", () => {
 
   it.each(["", "24:00", "12:60", "12:30:60", "7 pm", "12"])("rejects %j", (text) => {
     expect(parse24HourTime(text)).toBeNull();
+  });
+});
+
+describe("toPlainLines", () => {
+  it("normalizes CRLF and non-breaking spaces but keeps the lines", () => {
+    expect(toPlainLines("Monto:\u00a0RD$ 5\r\nEstado: Aprobada\r")).toBe(
+      "Monto: RD$ 5\nEstado: Aprobada\n",
+    );
+  });
+});
+
+describe("readField", () => {
+  const labels = ["Fecha", "Monto", "Comercio", "Estado", "Lugar de transacci[óo]n"];
+
+  it.each([
+    ["Fecha: | 4/10/2026\nMonto: | 920.00", "Fecha", "4/10/2026"],
+    ["| Comercio: | BURGER   KING | \n", "Comercio", "BURGER KING"],
+    ["Comercio:\nFARMACIA CAROL\nEstado:\nAprobada", "Comercio", "FARMACIA CAROL"],
+    ["Lugar de transaccion: SM BRAVO  \n", "Lugar de transacci[óo]n", "SM BRAVO"],
+    ["monto: RD$ 394.00", "Monto", "RD$ 394.00"],
+  ])("reads %j", (body, label, expected) => {
+    expect(readField(body, label, labels)).toBe(expected);
+  });
+
+  it("does not match a label inside another word", () => {
+    expect(readField("Subfecha: 1/1/2026", "Fecha", labels)).toBeNull();
+  });
+
+  it("returns null for an empty cell instead of the next label", () => {
+    expect(readField("Comercio: |\nEstado: | Aprobada", "Comercio", labels)).toBeNull();
+  });
+
+  it("returns null when the label is missing", () => {
+    expect(readField("Estado: Aprobada", "Comercio", labels)).toBeNull();
+  });
+});
+
+describe("parseAmountWithPrefix", () => {
+  it.each([
+    ["RD$ 394.00", 394],
+    ["US$1,045.50", 1045.5],
+    ["$ 11.99", 11.99],
+    ["920.00", 920],
+  ])("parses %j", (text, expected) => {
+    expect(parseAmountWithPrefix(text)).toBe(expected);
+  });
+
+  it.each(["", "RD$", "EUR 5.00", "RD$ N/D"])("rejects %j", (text) => {
+    expect(parseAmountWithPrefix(text)).toBeNull();
+  });
+});
+
+describe("CARD_ENDING_RE", () => {
+  it.each([
+    ["Visa Platinum terminada en 5977 presenta", "5977"],
+    ["Crédito Gold terminada en ****9236", "9236"],
+    ["TERMINADA EN XXXX1842.", "1842"],
+  ])("finds the card in %j", (text, expected) => {
+    expect(CARD_ENDING_RE.exec(text)?.[1]).toBe(expected);
+  });
+
+  it("ignores longer numbers", () => {
+    expect(CARD_ENDING_RE.exec("terminada en 123456")).toBeNull();
+  });
+});
+
+describe("isApprovedStatus", () => {
+  it.each([
+    ["Aprobada", true],
+    ["Transacción Aprobada", true],
+    ["Transacción No Aprobada", false],
+    ["Rechazada", false],
+    ["Aplicada", false],
+  ])("%j → %s", (status, expected) => {
+    expect(isApprovedStatus(status)).toBe(expected);
   });
 });

@@ -123,3 +123,41 @@ export function parse24HourTime(
   if (hour > 23 || minute > 59 || second > 59) return null;
   return { hour, minute, second };
 }
+
+/** Normalizes line endings to `\n` and non-breaking spaces to plain spaces, keeping the lines. */
+export function toPlainLines(body: string): string {
+  return body.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ");
+}
+
+/**
+ * Reads the value of a `Label: value` row from a plain-text body (see {@link toPlainLines}).
+ * HTML tables may come out with the cells separated by `|`, spaces or a line break, so all of
+ * those are accepted between the label and its value. `label` is a regex source; `knownLabels`
+ * are the other labels of the same email, so an empty cell never returns the next row's label.
+ */
+export function readField(
+  body: string,
+  label: string,
+  knownLabels: readonly string[],
+): string | null {
+  const re = new RegExp(`(?<!\\p{L})${label}\\s*:[\\s|]*([^|\\n]+)`, "iu");
+  const value = re.exec(body)?.[1];
+  if (value === undefined) return null;
+  const cleaned = normalizeText(value);
+  const nextLabel = new RegExp(`^(?:${knownLabels.join("|")})\\s*:`, "iu");
+  if (!cleaned || nextLabel.test(cleaned)) return null;
+  return cleaned;
+}
+
+/** Strips an `RD$` / `US$` / `$` prefix and parses the amount. */
+export function parseAmountWithPrefix(text: string): number | null {
+  return parseAmount(text.replace(/^(?:RD|US)?\$\s*/i, ""));
+}
+
+/** Last 4 card digits after "terminada en" (optionally masked, e.g. `terminada en ****5977`). */
+export const CARD_ENDING_RE = /terminada en\s*[*xX]*\s*(\d{4})\b/i;
+
+/** True for statuses such as `Aprobada` or `Transacción Aprobada`, false for `No Aprobada`. */
+export function isApprovedStatus(status: string): boolean {
+  return /\baprobada\b/i.test(status) && !/\bno aprobada\b/i.test(status);
+}
