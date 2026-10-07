@@ -90,3 +90,36 @@ export function combineReceivedDateWithTime(
   const parts = toDrParts(new Date(candidateMs).toISOString());
   return parts ? formatDrIso(parts) : null;
 }
+
+/** Parses a `d/m/yyyy` date (`4/10/2026` = 4 October 2026). Null if it is not a real calendar day. */
+export function parseDayMonthYear(
+  text: string,
+): Pick<DrDateParts, "year" | "month" | "day"> | null {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
+}
+
+/** Parses a 24-hour time with optional seconds and no leading zeros required (`20:7` = 20:07). */
+export function parse24HourTime(
+  text: string,
+): Pick<DrDateParts, "hour" | "minute" | "second"> | null {
+  const match = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(text.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const second = match[3] === undefined ? 0 : Number(match[3]);
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  return { hour, minute, second };
+}

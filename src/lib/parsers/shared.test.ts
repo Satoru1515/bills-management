@@ -4,7 +4,9 @@ import {
   formatDrIso,
   monthOf,
   normalizeText,
+  parse24HourTime,
   parseAmount,
+  parseDayMonthYear,
   to24Hour,
   toDrParts,
 } from "./shared";
@@ -94,5 +96,38 @@ describe("combineReceivedDateWithTime", () => {
 
   it("returns null for an invalid receive date", () => {
     expect(combineReceivedDateWithTime("", 10, 0)).toBeNull();
+  });
+});
+
+describe("parseDayMonthYear", () => {
+  it.each([
+    ["4/10/2026", { year: 2026, month: 10, day: 4 }],
+    ["06/10/2026", { year: 2026, month: 10, day: 6 }],
+    [" 31/12/2025 ", { year: 2025, month: 12, day: 31 }],
+    ["29/2/2028", { year: 2028, month: 2, day: 29 }],
+  ])("parses %j", (text, expected) => {
+    expect(parseDayMonthYear(text)).toEqual(expected);
+  });
+
+  it.each(["", "2026-10-04", "10/4/26", "31/9/2026", "29/2/2026", "0/10/2026", "4/13/2026"])(
+    "rejects %j",
+    (text) => {
+      expect(parseDayMonthYear(text)).toBeNull();
+    },
+  );
+});
+
+describe("parse24HourTime", () => {
+  it.each([
+    ["20:7", { hour: 20, minute: 7, second: 0 }],
+    ["9:05", { hour: 9, minute: 5, second: 0 }],
+    ["0:0", { hour: 0, minute: 0, second: 0 }],
+    ["23:18:05", { hour: 23, minute: 18, second: 5 }],
+  ])("parses %j", (text, expected) => {
+    expect(parse24HourTime(text)).toEqual(expected);
+  });
+
+  it.each(["", "24:00", "12:60", "12:30:60", "7 pm", "12"])("rejects %j", (text) => {
+    expect(parse24HourTime(text)).toBeNull();
   });
 });
