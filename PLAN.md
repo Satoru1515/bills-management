@@ -19,7 +19,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 
 ## Fase 1 — Dominio y parsers  (rama `fase/1-parsers`)
 
-- [ ] `src/lib/domain/types.ts`: tipos `Transaction`, `Bank`, `Currency`, `Category`, `ParsedEmail`, `RawEmail` (id, threadId, from, subject, date, snippet, body).
+- [x] `src/lib/domain/types.ts`: tipos `Transaction`, `Bank`, `Currency`, `Category`, `ParsedEmail`, `RawEmail` (id, threadId, from, subject, date, snippet, body).
 - [ ] `src/lib/parsers/scotiabank.ts` + tests con fixtures en `src/lib/parsers/__fixtures__/`. Cubrir los 3 asuntos de consumo, "Pago de factura", y los que se ignoran (pagos recibidos, $0.10, billetera).
 - [ ] `src/lib/parsers/apap.ts` + tests (tabla Fecha/Hora/Moneda/Monto/Comercio/Estado; ignorar OTP y pagos).
 - [ ] `src/lib/parsers/bsc.ts` (Banco Santa Cruz) + tests (Monto RD$/US$, Lugar, Fecha y hora; ignorar transferencias y cashback).
