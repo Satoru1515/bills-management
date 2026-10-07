@@ -15,7 +15,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Añadir Prettier, Vitest (+ `@testing-library/react`) y scripts `test`, `lint`, `format`, `typecheck` en package.json. `npm run typecheck` = `tsc --noEmit`.
 - [x] `.env.example` con todas las variables que usará la app (ver CLAUDE.md) y `.gitignore` que excluya `.env*.local`.
 - [x] README.md en inglés: qué hace, stack, cómo correr local, variables de entorno, estructura de carpetas.
-- [ ] Verificar que `npm run lint`, `npm run typecheck` y `npm test` pasan en limpio. Cerrar fase: PR.
+- [x] Verificar que `npm run lint`, `npm run typecheck` y `npm test` pasan en limpio. Cerrar fase: PR.
 
 ## Fase 1 — Dominio y parsers  (rama `fase/1-parsers`)
 
