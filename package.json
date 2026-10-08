@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-icons.mjs",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts"
   },
   "dependencies": {

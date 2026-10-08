@@ -58,6 +58,7 @@ npm run dev                  # http://localhost:3000
 | `npm run format`       | Format the code with Prettier              |
 | `npm run format:check` | Check formatting without writing           |
 | `npm run db:types`     | Regenerate `src/lib/supabase/database.types.ts` from the local Supabase database |
+| `npm run icons`        | Redraw the app icons and favicon (`src/lib/pwa/icon-image.ts`) |
 
 Before committing, `npm run lint`, `npm run typecheck` and `npm test` must all pass.
 
@@ -130,6 +131,14 @@ Below the cards, `src/lib/domain/breakdown.ts` splits the month by category (one
 
 Sums are done in cents so they do not drift. The header has a month selector (previous / next and a month input). Colors are CSS variables in `src/app/globals.css` (`background`, `surface`, `muted`, `border`, `accent`, `accent-soft`, available as Tailwind colors), with a light and a dark set that follow the system theme; amounts use tabular numbers.
 
+### Installing the app (PWA)
+
+The app is installable from the browser (Chrome/Edge: **Install app** in the address bar or menu; Android Chrome: **Add to Home screen**; iOS Safari: **Share → Add to Home Screen**). Installing needs HTTPS (or `localhost`) and a production build: the service worker is not registered under `npm run dev`, so it never serves stale scripts while developing.
+
+- **Manifest**: `src/app/manifest.ts` serves `/manifest.webmanifest` (name, `start_url` `/app`, standalone display, colors, icons) from `webAppManifest()` in `src/lib/pwa/manifest.ts`. The root layout adds the light and dark `theme-color` and the Apple web app tags.
+- **Icons**: a white card on the accent blue, drawn in code by `src/lib/pwa/icon-image.ts` (no image tools needed). `npm run icons` writes `public/icons/icon-192.png`, `icon-512.png`, `maskable-512.png` (edge to edge, card inside the safe zone), `src/app/apple-icon.png` and `src/app/favicon.ico`; a test fails if the committed files no longer match the drawing.
+- **Service worker**: `public/sw.js`, registered by `src/app/service-worker.tsx` (`src/lib/pwa/register.ts`). Build assets under `/_next/static` are cached on first use (newest 200 kept); icons and the manifest are served from the cache and refreshed in the background; page navigations always go to the network and fall back to `public/offline.html` when it is unreachable. Pages, API routes, auth and server actions are never cached, since they hold private data. Bump `VERSION` in `sw.js` when its caching changes; old caches are deleted on activation. `next.config.ts` serves `sw.js` with `Cache-Control: no-cache`, and the middleware skips the PWA files.
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -165,7 +174,8 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── google-cloud-setup.md # Google Cloud project, OAuth consent screen and client for sign-in + Gmail
 │   ├── parsing-spec.md     # Email formats per bank and category rules (source of truth for parsers)
 │   └── rutina.md           # Prompt of the automated development routine
-├── public/                 # Static assets
+├── public/                 # Static assets: icons/, sw.js (service worker), offline.html
+├── scripts/                # generate-icons.mjs (`npm run icons`)
 ├── src/
 │   ├── app/                # Next.js App Router pages, layouts and API routes
 │   ├── lib/auth/           # Google sign-in options and Gmail refresh token storage
@@ -174,6 +184,7 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── lib/domain/         # Types, categorization, deduplication, months, money, monthly summary
 │   ├── lib/gmail/          # Read-only Gmail API client and MIME-to-text conversion
 │   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
+│   ├── lib/pwa/            # Web app manifest, icon drawing (PNG/ICO encoder), service worker registration
 │   ├── lib/repo/           # Data access (transactions, profiles, Gmail connections, category rules, sync runs)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
 │   ├── lib/sync/           # Sync pipeline + the manual and cron sync request handlers

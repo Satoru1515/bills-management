@@ -62,7 +62,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 
 ## Fase 6 — PWA y móvil  (rama `fase/6-mobile`)
 
-- [ ] `manifest.webmanifest`, íconos, service worker básico (cache de assets, página offline). Instalable desde el navegador.
+- [x] `manifest.webmanifest`, íconos, service worker básico (cache de assets, página offline). Instalable desde el navegador.
 - [ ] Capacitor: `npx cap init`, `capacitor.config.ts` apuntando a la URL desplegada, proyecto Android generado (`android/` en el repo). Documentar cómo construir el APK.
 - [ ] Login con Google dentro de Capacitor (abrir en navegador del sistema y volver por deep link). Documentar.
 - [ ] Cerrar fase: PR.

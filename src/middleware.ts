@@ -6,8 +6,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Every path except Next.js internals and static files.
+  // Every path except Next.js internals and static files (the PWA files included).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
