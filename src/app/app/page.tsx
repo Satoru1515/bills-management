@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "./actions";
+import { SyncButton } from "./sync-button";
 
 export const metadata = { title: "Bills Management" };
 
@@ -26,6 +27,7 @@ export default async function AppHome() {
       <p className="text-sm opacity-80">
         Signed in as <strong>{user.email}</strong>. The spending dashboard arrives in a later phase.
       </p>
+      <SyncButton />
     </main>
   );
 }

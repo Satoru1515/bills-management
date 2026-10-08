@@ -110,6 +110,13 @@ Failures throw `GmailError`; `reconnectRequired` is true when the refresh token 
 
 Expected failures are returned, not thrown; `reconnectRequired` tells the UI to ask for a new Google sign-in.
 
+Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
+
+- `POST /api/sync`: the **Sync now** button on `/app`. Needs the user's session and a same-site `Origin`; answers `401` when signed out, `409` while another sync of the user is running (a `running` row younger than 10 minutes), and otherwise `200` with the counts (`newTransactions`, `unparsed`, `errorCount`, `reconnectRequired`, …; error details stay in `sync_runs`).
+- `GET /api/cron/sync`: Vercel Cron (`vercel.json`, every 15 minutes) with `Authorization: Bearer $CRON_SECRET`. Syncs every user with a `gmail_connections` row, one after another, and returns totals only. Without `CRON_SECRET` it refuses to run (`500`).
+
+Vercel's Hobby plan only allows daily cron jobs, so the 15-minute schedule needs a Pro plan (or an external scheduler calling the endpoint with the same header).
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -155,13 +162,14 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
 │   ├── lib/repo/           # Data access (transactions, Gmail connections, category rules, sync runs)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
-│   ├── lib/sync/           # Sync pipeline: search, parse, dedupe, categorize, store, log the run
+│   ├── lib/sync/           # Sync pipeline + the manual and cron sync request handlers
 │   └── test/               # Shared test files (smoke test)
 ├── supabase/               # Supabase CLI config and SQL migrations
 ├── CLAUDE.md               # Project conventions and rules for the automated routine
 ├── PLAN.md                 # Phased development plan
 ├── PROGRESS.md             # Log of completed tasks
 ├── .env.example            # Environment variable template
+├── vercel.json             # Vercel Cron schedule for /api/cron/sync
 ├── vitest.config.mts       # Vitest config (jsdom, `@/` alias)
 └── vitest.setup.ts         # jest-dom matchers and cleanup
 ```

@@ -4,6 +4,7 @@ import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
 import {
   getLastSyncAt,
   getRefreshToken,
+  listConnectedUserIds,
   saveGmailConnection,
   setLastSyncAt,
 } from "./gmail-connections";
@@ -140,5 +141,23 @@ describe("getLastSyncAt / setLastSyncAt", () => {
       code: "XX000",
     });
     await expect(setLastSyncAt(mock.client, USER, "x")).rejects.toThrow("setLastSyncAt: nope");
+  });
+});
+
+describe("listConnectedUserIds", () => {
+  it("returns every connected user id, in a stable order", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: [{ user_id: USER }, { user_id: OTHER_USER }] }, { data: null });
+    await expect(listConnectedUserIds(mock.client)).resolves.toEqual([USER, OTHER_USER]);
+    await expect(listConnectedUserIds(mock.client)).resolves.toEqual([]);
+    expect(mock.queries[0]!.table).toBe("gmail_connections");
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "order"]);
+    expect(argsOf(mock.queries[0], "select")).toEqual([["user_id"]]);
+  });
+
+  it("wraps database errors in RepoError", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ error: { message: "boom" } });
+    await expect(listConnectedUserIds(mock.client)).rejects.toThrow("listConnectedUserIds: boom");
   });
 });

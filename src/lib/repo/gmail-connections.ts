@@ -87,3 +87,13 @@ export async function setLastSyncAt(admin: DbClient, userId: string, at: string)
     .eq("user_id", userId);
   if (error) throw new RepoError("setLastSyncAt", error.message, error.code);
 }
+
+/** Users with a stored Gmail connection, for the cron sync. Admin client only. */
+export async function listConnectedUserIds(admin: DbClient): Promise<string[]> {
+  const { data, error } = await admin
+    .from("gmail_connections")
+    .select("user_id")
+    .order("user_id", { ascending: true });
+  if (error) throw new RepoError("listConnectedUserIds", error.message, error.code);
+  return (data ?? []).map((row) => row.user_id);
+}

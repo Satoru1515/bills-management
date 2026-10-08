@@ -62,3 +62,23 @@ export async function finishSyncRun(
     .eq("user_id", userId);
   if (error) throw new RepoError("finishSyncRun", error.message, error.code);
 }
+
+/**
+ * Whether the user has a `running` sync that started at or after `since`. Older `running`
+ * rows are runs that were cut off (for example by a function timeout) and do not count.
+ */
+export async function hasRunningSync(
+  client: DbClient,
+  userId: string,
+  since: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("sync_runs")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "running")
+    .gte("started_at", since)
+    .limit(1);
+  if (error) throw new RepoError("hasRunningSync", error.message, error.code);
+  return (data ?? []).length > 0;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
-import { finishSyncRun, startSyncRun } from "./sync-runs";
+import { finishSyncRun, hasRunningSync, startSyncRun } from "./sync-runs";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const RUN = "33333333-3333-4333-8333-333333333333";
@@ -87,5 +87,30 @@ describe("finishSyncRun", () => {
         errors: [],
       }),
     ).rejects.toThrow("finishSyncRun: boom");
+  });
+});
+
+describe("hasRunningSync", () => {
+  it("looks for a running run of the user started since the given time", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: [{ id: RUN }] }, { data: [] });
+
+    await expect(hasRunningSync(mock.client, USER, "2026-10-07T15:50:00.000Z")).resolves.toBe(true);
+    await expect(hasRunningSync(mock.client, USER, "2026-10-07T15:50:00.000Z")).resolves.toBe(
+      false,
+    );
+    expect(mock.queries[0]!.table).toBe("sync_runs");
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "eq", "eq", "gte", "limit"]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([
+      ["user_id", USER],
+      ["status", "running"],
+    ]);
+    expect(argsOf(mock.queries[0], "gte")).toEqual([["started_at", "2026-10-07T15:50:00.000Z"]]);
+  });
+
+  it("wraps database errors in RepoError", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ error: { message: "boom" } });
+    await expect(hasRunningSync(mock.client, USER, "x")).rejects.toThrow("hasRunningSync: boom");
   });
 });
