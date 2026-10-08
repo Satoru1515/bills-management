@@ -118,7 +118,7 @@ Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
 - `POST /api/sync`: the **Sync now** button on `/app`. Needs the user's session and a same-site `Origin`; answers `401` when signed out, `409` while another sync of the user is running (a `running` row younger than 10 minutes), and otherwise `200` with the counts (`newTransactions`, `unparsed`, `errorCount`, `reconnectRequired`, …; error details stay in `sync_runs`).
 - `GET /api/cron/sync`: Vercel Cron (`vercel.json`, every 15 minutes) with `Authorization: Bearer $CRON_SECRET`. Syncs every user with a `gmail_connections` row, one after another, and returns totals only. Without `CRON_SECRET` it refuses to run (`500`).
 
-Vercel's Hobby plan only allows daily cron jobs, so the 15-minute schedule needs a Pro plan (or an external scheduler calling the endpoint with the same header).
+Vercel's Hobby plan only allows daily cron jobs (a more frequent schedule makes every deployment fail), so the 15-minute schedule needs a Pro plan; on Hobby, use a daily schedule or an external scheduler calling the endpoint with the same header ([`docs/deploy.md`](docs/deploy.md#6-scheduled-sync-cron)).
 
 ### Dashboard
 
@@ -144,6 +144,10 @@ The app is installable from the browser (Chrome/Edge: **Install app** in the add
 ### Android app
 
 `android/` is a [Capacitor](https://capacitorjs.com/) project whose WebView opens the deployed site (`CAP_SERVER_URL`, read by `capacitor.config.ts` at `npm run android:sync`), so the app runs the same code as the website. Building the APK, signing a release and the app ID are covered in [`docs/android.md`](docs/android.md). Google sign-in inside the app opens in the system browser and comes back through the deep link `com.satoru1515.bills://auth/callback`, which must be added to Supabase's Redirect URLs ([details](docs/android.md#4-google-sign-in-in-the-app)).
+
+## Deploying
+
+The app runs on Vercel with a hosted Supabase project. [`docs/deploy.md`](docs/deploy.md) covers it step by step: creating the Supabase project and applying the migrations, Google sign-in settings, the Vercel project and its environment variables, the scheduled sync (and the Hobby plan limit), a custom domain, a first-run checklist and troubleshooting.
 
 ## Environment variables
 
@@ -179,6 +183,7 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 ├── android/                # Capacitor Android project (see docs/android.md)
 ├── docs/
 │   ├── android.md          # Building the Android app (APK) with Capacitor
+│   ├── deploy.md           # Deploying to Vercel + Supabase (env vars, cron, domain)
 │   ├── google-cloud-setup.md # Google Cloud project, OAuth consent screen and client for sign-in + Gmail
 │   ├── parsing-spec.md     # Email formats per bank and category rules (source of truth for parsers)
 │   └── rutina.md           # Prompt of the automated development routine
