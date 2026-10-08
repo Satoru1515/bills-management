@@ -70,8 +70,10 @@ export interface ParsedEmail {
 }
 
 /** A stored transaction: a parsed email plus the user's own edits. */
-export interface Transaction extends ParsedEmail {
+export interface Transaction extends Omit<ParsedEmail, "gmailMessageId"> {
   id: string;
+  /** Gmail message id; null for manual entries. */
+  gmailMessageId: string | null;
   userId: string;
   category: Category;
   /** Hidden from totals by the user; never overwritten on re-sync. */
