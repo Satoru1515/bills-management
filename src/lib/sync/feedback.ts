@@ -18,7 +18,15 @@ export interface SyncResponseBody {
 }
 
 /** Error codes in the body of a non-200 response: `{ error: SyncErrorCode }`. */
-export type SyncErrorCode = "forbidden" | "unauthorized" | "sync_in_progress" | "sync_failed";
+export type SyncErrorCode =
+  "forbidden" | "unauthorized" | "sync_in_progress" | "rate_limited" | "sync_failed";
+
+/** Body of a non-200 response. A `429` also says how long to wait. */
+export interface SyncErrorBody {
+  error: SyncErrorCode;
+  /** Seconds until another sync may start (`rate_limited` only). */
+  retryAfterSeconds?: number;
+}
 
 export interface SyncFeedback {
   tone: "success" | "error";
@@ -31,6 +39,7 @@ const RETRY_LATER = "The sync failed. Please try again later.";
 export function syncFeedback(status: number, body: unknown): SyncFeedback {
   if (status === 401) return error("Your session has ended. Sign in again.");
   if (status === 409) return error("A sync is already running. Try again in a minute.");
+  if (status === 429) return error(rateLimitedMessage(body));
   if (status !== 200 || !isSyncResponseBody(body)) return error(RETRY_LATER);
 
   if (body.status === "error") {
@@ -53,6 +62,19 @@ export function syncFeedback(status: number, body: unknown): SyncFeedback {
     parts.push("Some emails could not be loaded; they will be retried on the next sync.");
   }
   return { tone: "success", message: parts.join(" ") };
+}
+
+function rateLimitedMessage(body: unknown): string {
+  const seconds =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>).retryAfterSeconds
+      : undefined;
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
+    return "You synced a moment ago. Try again later.";
+  }
+  const wait =
+    seconds < 60 ? plural(Math.ceil(seconds), "second") : plural(Math.ceil(seconds / 60), "minute");
+  return `You synced a moment ago. Try again in ${wait}.`;
 }
 
 function error(message: string): SyncFeedback {

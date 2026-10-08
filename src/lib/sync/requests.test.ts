@@ -42,6 +42,7 @@ function manualDeps(overrides: Partial<ManualSyncDeps> = {}): ManualSyncDeps {
   return {
     getUserId: vi.fn(async () => USER),
     isSyncRunning: vi.fn(async () => false),
+    listManualSyncStarts: vi.fn(async () => []),
     runSync: vi.fn(async () => result()),
     now: () => NOW,
     ...overrides,
@@ -97,6 +98,7 @@ describe("handleManualSync", () => {
 
     expect(response).toEqual({ status: 200, body: toResponseBody(result()) });
     expect(deps.isSyncRunning).toHaveBeenCalledWith(USER, "2026-10-07T15:50:00.000Z");
+    expect(deps.listManualSyncStarts).toHaveBeenCalledWith(USER, "2026-10-07T15:00:00.000Z");
     expect(deps.runSync).toHaveBeenCalledWith(USER);
   });
 
@@ -138,11 +140,45 @@ describe("handleManualSync", () => {
     expect(deps.runSync).not.toHaveBeenCalled();
   });
 
+  it("answers 429 with Retry-After when the user synced too recently", async () => {
+    const deps = manualDeps({
+      listManualSyncStarts: vi.fn(async () => ["2026-10-07T15:59:30.000Z"]),
+    });
+    await expect(handleManualSync(SAME_SITE, deps)).resolves.toEqual({
+      status: 429,
+      body: { error: "rate_limited", retryAfterSeconds: 30 },
+      headers: { "Retry-After": "30" },
+    });
+    expect(deps.runSync).not.toHaveBeenCalled();
+  });
+
+  it("answers 429 after ten manual syncs in an hour", async () => {
+    // Ten syncs, 5 to 50 minutes ago: free again when the one 50 minutes ago is an hour old.
+    const starts = Array.from({ length: 10 }, (_, i) =>
+      new Date(NOW.getTime() - (5 + i * 5) * 60_000).toISOString(),
+    );
+    const deps = manualDeps({ listManualSyncStarts: vi.fn(async () => starts) });
+    const response = await handleManualSync(SAME_SITE, deps);
+    expect(response.status).toBe(429);
+    expect(response.body).toEqual({ error: "rate_limited", retryAfterSeconds: 600 });
+    expect(deps.runSync).not.toHaveBeenCalled();
+  });
+
+  it("reports a running sync before the rate limit", async () => {
+    const deps = manualDeps({
+      isSyncRunning: vi.fn(async () => true),
+      listManualSyncStarts: vi.fn(async () => [NOW.toISOString()]),
+    });
+    expect((await handleManualSync(SAME_SITE, deps)).status).toBe(409);
+    expect(deps.listManualSyncStarts).not.toHaveBeenCalled();
+  });
+
   it("answers 500 without details when something throws, and logs it", async () => {
     const log = vi.fn();
     for (const broken of [
       { getUserId: vi.fn(async () => Promise.reject(new Error("auth down"))) },
       { isSyncRunning: vi.fn(async () => Promise.reject(new Error("db down"))) },
+      { listManualSyncStarts: vi.fn(async () => Promise.reject(new Error("db timeout"))) },
       { runSync: vi.fn(async () => Promise.reject(new Error("Missing environment variable"))) },
     ]) {
       const response = await handleManualSync(SAME_SITE, manualDeps({ ...broken, log }));
@@ -151,6 +187,7 @@ describe("handleManualSync", () => {
     expect(log.mock.calls.map(([message]) => message)).toEqual([
       "manual sync failed: auth down",
       "manual sync failed: db down",
+      "manual sync failed: db timeout",
       "manual sync failed: Missing environment variable",
     ]);
   });

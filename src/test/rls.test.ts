@@ -293,18 +293,43 @@ describe("category_rules", () => {
 });
 
 describe("sync_runs", () => {
-  it("a user can start and finish their own run but not delete history", async () => {
-    const result = await asUser(db, ana, async (tx) => {
+  it("a user reads only their own runs", async () => {
+    const rows = await asUser(
+      db,
+      ana,
+      async (tx) =>
+        (await tx.query<{ user_id: string }>("select user_id from public.sync_runs")).rows,
+    );
+    expect(rows).toEqual([{ user_id: ana }]);
+  });
+
+  // Only the server (service role) records syncs; the rows drive the "Sync now" rate limit.
+  it.each([
+    ["start", "insert into public.sync_runs (user_id) values ($1)"],
+    [
+      "rewrite",
+      "update public.sync_runs set started_at = now() - interval '1 day' where user_id = $1",
+    ],
+    ["delete", "delete from public.sync_runs where user_id = $1"],
+  ])("a user cannot %s runs, not even their own", async (_action, sql) => {
+    await expect(asUser(db, ana, (tx) => tx.query(sql, [ana]))).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+
+  it("the service role still records and finishes runs", async () => {
+    const finished = await db.transaction(async (tx) => {
+      await tx.exec("set local role service_role");
       await tx.query("insert into public.sync_runs (user_id) values ($1)", [ana]);
-      const finished = await tx.query(
+      const result = await tx.query(
         `update public.sync_runs set status = 'ok', finished_at = now(), new_transactions = 3
-          where status = 'running'`,
+          where user_id = $1 and status = 'running'`,
+        [ana],
       );
-      const removed = await tx.query("delete from public.sync_runs");
-      return [finished.affectedRows, removed.affectedRows];
+      await tx.exec("delete from public.sync_runs where status = 'ok'");
+      return result.affectedRows;
     });
-    // Both of Ana's runs are finished; Ben's is untouched; nothing is deleted.
-    expect(result).toEqual([2, 0]);
+    expect(finished).toBe(2);
     expect(await count(db, "sync_runs", "user_id = $1 and status = 'running'", [ben])).toBe(1);
   });
 });

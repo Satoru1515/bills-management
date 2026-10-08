@@ -70,7 +70,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 ## Fase 7 — Despliegue  (rama `fase/7-deploy`)
 
 - [x] `docs/deploy.md`: Vercel + Supabase, variables de entorno, cron, dominio.
-- [ ] Checklist de seguridad: tokens cifrados, RLS activa, secretos fuera del repo, rate limit en `/api/sync`.
+- [x] Checklist de seguridad: tokens cifrados, RLS activa, secretos fuera del repo, rate limit en `/api/sync`.
 - [ ] Cerrar fase: PR. Proyecto listo para uso personal.
 
 ## Ideas para después (no tocar sin aprobación)

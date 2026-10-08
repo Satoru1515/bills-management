@@ -83,6 +83,29 @@ export async function hasRunningSync(
   return (data ?? []).length > 0;
 }
 
+/**
+ * Start times of the user's syncs with this trigger that started at or after `since`, newest
+ * first (at most `limit`). Used by the "Sync now" rate limit.
+ */
+export async function listSyncStartsSince(
+  client: DbClient,
+  userId: string,
+  trigger: SyncTrigger,
+  since: string,
+  limit = 50,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("sync_runs")
+    .select("started_at")
+    .eq("user_id", userId)
+    .eq("trigger", trigger)
+    .gte("started_at", since)
+    .order("started_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new RepoError("listSyncStartsSince", error.message, error.code);
+  return (data ?? []).map((row) => row.started_at);
+}
+
 /** The latest sync of a user, as the settings page shows it. */
 export interface SyncRunRecord {
   status: SyncRunStatus | "running";

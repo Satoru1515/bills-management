@@ -55,6 +55,22 @@ describe("syncFeedback", () => {
     expect(syncFeedback(409, { error: "sync_in_progress" }).message).toBe(
       "A sync is already running. Try again in a minute.",
     );
+    expect(syncFeedback(429, { error: "rate_limited", retryAfterSeconds: 45 }).message).toBe(
+      "You synced a moment ago. Try again in 45 seconds.",
+    );
+    expect(syncFeedback(429, { error: "rate_limited", retryAfterSeconds: 1 }).message).toBe(
+      "You synced a moment ago. Try again in 1 second.",
+    );
+    expect(syncFeedback(429, { error: "rate_limited", retryAfterSeconds: 600 }).message).toBe(
+      "You synced a moment ago. Try again in 10 minutes.",
+    );
+    expect(syncFeedback(429, { error: "rate_limited", retryAfterSeconds: 61 }).message).toBe(
+      "You synced a moment ago. Try again in 2 minutes.",
+    );
+    expect(syncFeedback(429, { error: "rate_limited" }).message).toBe(
+      "You synced a moment ago. Try again later.",
+    );
+    expect(syncFeedback(429, null).message).toBe("You synced a moment ago. Try again later.");
     expect(syncFeedback(500, { error: "sync_failed" }).message).toBe(retry);
     expect(syncFeedback(403, { error: "forbidden" }).message).toBe(retry);
     expect(syncFeedback(200, null).message).toBe(retry);

@@ -115,7 +115,7 @@ Expected failures are returned, not thrown; `reconnectRequired` tells the UI to 
 
 Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
 
-- `POST /api/sync`: the **Sync now** button on `/app`. Needs the user's session and a same-site `Origin`; answers `401` when signed out, `409` while another sync of the user is running (a `running` row younger than 10 minutes), and otherwise `200` with the counts (`newTransactions`, `unparsed`, `errorCount`, `reconnectRequired`, …; error details stay in `sync_runs`).
+- `POST /api/sync`: the **Sync now** button on `/app`. Needs the user's session and a same-site `Origin`; answers `401` when signed out, `409` while another sync of the user is running (a `running` row younger than 10 minutes), `429` with `Retry-After` when the user already synced in the last minute or 10 times in the last hour (`src/lib/sync/rate-limit.ts`, counted from `sync_runs`, which users can read but not write), and otherwise `200` with the counts (`newTransactions`, `unparsed`, `errorCount`, `reconnectRequired`, …; error details stay in `sync_runs`).
 - `GET /api/cron/sync`: Vercel Cron (`vercel.json`, every 15 minutes) with `Authorization: Bearer $CRON_SECRET`. Syncs every user with a `gmail_connections` row, one after another, and returns totals only. Without `CRON_SECRET` it refuses to run (`500`).
 
 Vercel's Hobby plan only allows daily cron jobs (a more frequent schedule makes every deployment fail), so the 15-minute schedule needs a Pro plan; on Hobby, use a daily schedule or an external scheduler calling the endpoint with the same header ([`docs/deploy.md`](docs/deploy.md#6-scheduled-sync-cron)).
@@ -147,7 +147,7 @@ The app is installable from the browser (Chrome/Edge: **Install app** in the add
 
 ## Deploying
 
-The app runs on Vercel with a hosted Supabase project. [`docs/deploy.md`](docs/deploy.md) covers it step by step: creating the Supabase project and applying the migrations, Google sign-in settings, the Vercel project and its environment variables, the scheduled sync (and the Hobby plan limit), a custom domain, a first-run checklist and troubleshooting.
+The app runs on Vercel with a hosted Supabase project. [`docs/deploy.md`](docs/deploy.md) covers it step by step: creating the Supabase project and applying the migrations, Google sign-in settings, the Vercel project and its environment variables, the scheduled sync (and the Hobby plan limit), a custom domain, a first-run checklist and troubleshooting. Before going live, also go through [`docs/security.md`](docs/security.md) (encrypted tokens, RLS, secrets, the `/api/sync` rate limit).
 
 ## Environment variables
 
@@ -186,6 +186,8 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── deploy.md           # Deploying to Vercel + Supabase (env vars, cron, domain)
 │   ├── google-cloud-setup.md # Google Cloud project, OAuth consent screen and client for sign-in + Gmail
 │   ├── parsing-spec.md     # Email formats per bank and category rules (source of truth for parsers)
+│   ├── rls.md              # Row Level Security: who can do what, automatic and manual checks
+│   ├── security.md         # Security checklist (tokens, RLS, secrets, rate limit)
 │   └── rutina.md           # Prompt of the automated development routine
 ├── mobile/www/             # Page the Android app shows when built without CAP_SERVER_URL
 ├── public/                 # Static assets: icons/, sw.js (service worker), offline.html

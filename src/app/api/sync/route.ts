@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { hasRunningSync } from "@/lib/repo/sync-runs";
+import { hasRunningSync, listSyncStartsSince } from "@/lib/repo/sync-runs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { handleManualSync } from "@/lib/sync/requests";
@@ -13,7 +13,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
-  const { status, body } = await handleManualSync(
+  const { status, body, headers } = await handleManualSync(
     { origin: request.headers.get("origin"), url: request.url },
     {
       async getUserId() {
@@ -24,10 +24,16 @@ export async function POST(request: NextRequest) {
       },
       // The user's own client: RLS lets them read their sync_runs.
       isSyncRunning: (userId, since) => hasRunningSync(supabase, userId, since),
+      // Users can read but not write sync_runs (migration 0003), so the count is trustworthy.
+      listManualSyncStarts: (userId, since) =>
+        listSyncStartsSince(supabase, userId, "manual", since),
       runSync: (userId) => runSync(createSyncDeps(createAdminClient()), userId, "manual"),
       log: (message) => console.error(message),
     },
   );
 
-  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(body, {
+    status,
+    headers: { ...headers, "Cache-Control": "no-store" },
+  });
 }

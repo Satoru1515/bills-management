@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
-import { finishSyncRun, getLatestSyncRun, hasRunningSync, startSyncRun } from "./sync-runs";
+import {
+  finishSyncRun,
+  getLatestSyncRun,
+  hasRunningSync,
+  listSyncStartsSince,
+  startSyncRun,
+} from "./sync-runs";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const RUN = "33333333-3333-4333-8333-333333333333";
@@ -112,6 +118,41 @@ describe("hasRunningSync", () => {
     const mock = createSupabaseMock();
     mock.respond({ error: { message: "boom" } });
     await expect(hasRunningSync(mock.client, USER, "x")).rejects.toThrow("hasRunningSync: boom");
+  });
+});
+
+describe("listSyncStartsSince", () => {
+  it("lists the start times of the user's runs with the trigger since the given time", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({
+      data: [
+        { started_at: "2026-10-07T15:59:00+00:00" },
+        { started_at: "2026-10-07T15:20:00+00:00" },
+      ],
+    });
+
+    await expect(
+      listSyncStartsSince(mock.client, USER, "manual", "2026-10-07T15:00:00.000Z"),
+    ).resolves.toEqual(["2026-10-07T15:59:00+00:00", "2026-10-07T15:20:00+00:00"]);
+    expect(mock.queries[0]!.table).toBe("sync_runs");
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "eq", "eq", "gte", "order", "limit"]);
+    expect(argsOf(mock.queries[0], "select")).toEqual([["started_at"]]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([
+      ["user_id", USER],
+      ["trigger", "manual"],
+    ]);
+    expect(argsOf(mock.queries[0], "gte")).toEqual([["started_at", "2026-10-07T15:00:00.000Z"]]);
+    expect(argsOf(mock.queries[0], "order")).toEqual([["started_at", { ascending: false }]]);
+    expect(argsOf(mock.queries[0], "limit")).toEqual([[50]]);
+  });
+
+  it("returns an empty list when there are none and wraps database errors", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: null }, { error: { message: "boom" } });
+    await expect(listSyncStartsSince(mock.client, USER, "manual", "x")).resolves.toEqual([]);
+    await expect(listSyncStartsSince(mock.client, USER, "manual", "x")).rejects.toThrow(
+      "listSyncStartsSince: boom",
+    );
   });
 });
 

@@ -7,7 +7,8 @@
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { SyncErrorCode, SyncResponseBody } from "./feedback";
+import type { SyncErrorBody, SyncResponseBody } from "./feedback";
+import { manualSyncRetryAfter, manualSyncWindowStart } from "./rate-limit";
 import type { SyncResult } from "./run";
 
 /**
@@ -19,6 +20,8 @@ export const RUNNING_SYNC_WINDOW_MS = 10 * 60 * 1000;
 export interface JsonResponse<T = unknown> {
   status: number;
   body: T;
+  /** Extra response headers, e.g. `Retry-After` on a `429`. */
+  headers?: Record<string, string>;
 }
 
 /** The parts of a sync result the browser sees (error details stay in `sync_runs`). */
@@ -64,19 +67,24 @@ export interface ManualSyncDeps {
   /** The signed-in user's id (validated with the Auth server), or null. */
   getUserId(): Promise<string | null>;
   isSyncRunning(userId: string, since: string): Promise<boolean>;
+  /** Start times of the user's manual syncs that started at or after `since`. */
+  listManualSyncStarts(userId: string, since: string): Promise<string[]>;
   runSync(userId: string): Promise<SyncResult>;
   now?: () => Date;
   log?: (message: string) => void;
 }
 
-/** `POST /api/sync`: syncs the signed-in user's Gmail now. */
+/**
+ * `POST /api/sync`: syncs the signed-in user's Gmail now. One sync at a time per user, and
+ * at most as often as the rate limit in ./rate-limit.ts allows (`429` with `Retry-After`).
+ */
 export async function handleManualSync(
   request: ManualSyncRequest,
   deps: ManualSyncDeps,
-): Promise<JsonResponse<SyncResponseBody | { error: SyncErrorCode }>> {
+): Promise<JsonResponse<SyncResponseBody | SyncErrorBody>> {
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? (() => {});
-  const fail = (status: number, error: SyncErrorCode) => ({ status, body: { error } });
+  const fail = (status: number, error: SyncErrorBody["error"]) => ({ status, body: { error } });
 
   if (!isSameOrigin(request.origin, request.url)) return fail(403, "forbidden");
 
@@ -85,6 +93,15 @@ export async function handleManualSync(
     if (!userId) return fail(401, "unauthorized");
     if (await deps.isSyncRunning(userId, runningSince(now()))) {
       return fail(409, "sync_in_progress");
+    }
+    const starts = await deps.listManualSyncStarts(userId, manualSyncWindowStart(now()));
+    const retryAfterSeconds = manualSyncRetryAfter(starts, now());
+    if (retryAfterSeconds !== null) {
+      return {
+        status: 429,
+        body: { error: "rate_limited", retryAfterSeconds },
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      };
     }
     const result = await deps.runSync(userId);
     return { status: 200, body: toResponseBody(result) };

@@ -39,7 +39,7 @@ Google sign-in itself is configured in [google-cloud-setup.md](google-cloud-setu
 
 ## 2. Apply the database migrations
 
-The tables, Row Level Security and policies are in `supabase/migrations/` (`0001_init.sql`, `0002_rls_policies.sql`). Push them with the Supabase CLI (a dev dependency, run through `npx`):
+The tables, Row Level Security and policies are in `supabase/migrations/` (`0001_init.sql`, `0002_rls_policies.sql`, `0003_sync_runs_server_only.sql`). Push them with the Supabase CLI (a dev dependency, run through `npx`):
 
 ```bash
 npx supabase login
@@ -203,6 +203,9 @@ The `*.vercel.app` address works as is. To use your own domain:
 3. Optional: in **Settings > Domains**, redirect the `*.vercel.app` address to the new domain so there is a single URL (sessions are per domain).
 
 ## 8. First run checklist
+
+Go through the deploy-time items (🔧) of the [security checklist](security.md) as well.
+
 
 1. Open `https://<your domain>/app`: you are sent to `/login`.
 2. **Continue with Google** with an account on the Google test user list. Allow Gmail access on the consent screen.
