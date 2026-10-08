@@ -118,8 +118,8 @@ function fakeGoogle(clock: { now: Date }) {
   const accounts = new Map<string, GmailMessage[]>();
   const accessTokens = new Map<string, string>();
   const revoked = new Set<string>();
-  /** Message ids answered with a 500 on their next fetch. */
-  const failOnce = new Set<string>();
+  /** Message ids answered with a 500 (even after retries) until removed. */
+  const failing = new Set<string>();
   const listCalls: ListCall[] = [];
   const fetched: string[] = [];
   let issued = 0;
@@ -188,7 +188,7 @@ function fakeGoogle(clock: { now: Date }) {
       const id = decodeURIComponent(get[1]!);
       expect(searchParams.get("format")).toBe("full");
       fetched.push(id);
-      if (failOnce.delete(id)) {
+      if (failing.has(id)) {
         return reply(500, { error: { code: 500, message: "Backend Error", status: "INTERNAL" } });
       }
       const message = mailbox.find((m) => m.id === id);
@@ -201,7 +201,7 @@ function fakeGoogle(clock: { now: Date }) {
     return reply(404, { error: { code: 404, message: "Not Found" } });
   };
 
-  return { fetch, accounts, revoked, failOnce, listCalls, fetched };
+  return { fetch, accounts, revoked, failing, listCalls, fetched };
 }
 
 /**
@@ -402,6 +402,7 @@ function syncDeps(): SyncDeps {
         refreshToken,
         fetch: google.fetch,
         now: () => clock.now.getTime(),
+        sleep: async () => {},
       });
     },
     now: () => clock.now,
@@ -586,7 +587,7 @@ describe("Gmail sync, end to end", () => {
   });
 
   it("a message that fails to load is recorded and picked up by the next run", async () => {
-    google.failOnce.add("bsc-usd-1");
+    google.failing.add("bsc-usd-1");
 
     const first = await syncAt(RUN_1);
 
@@ -603,6 +604,7 @@ describe("Gmail sync, end to end", () => {
     // last_sync_at stays put so the failed message is searched again.
     expect(await lastSyncAt(db, satoru)).toBeNull();
 
+    google.failing.delete("bsc-usd-1");
     const second = await syncAt(RUN_1.replace("22:14:50", "22:14:55"));
     expect(second).toMatchObject({ status: "ok", newTransactions: 1, errors: [] });
     expect((await transactions(db, satoru)).map((t) => t.gmailMessageId)).toContain("bsc-usd-1");

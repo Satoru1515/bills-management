@@ -29,6 +29,11 @@ const EXPIRY_MARGIN_MS = 60 * 1000;
 const PAGE_SIZE = 500;
 /** Default cap on listed messages, so a bad query cannot page through a whole mailbox. */
 const DEFAULT_MAX_MESSAGES = 2000;
+/**
+ * Pauses before retrying a request Gmail refused for going too fast (its per-user quota is
+ * counted per minute) or that failed on Google's side: about a minute in total.
+ */
+export const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 32000] as const;
 
 /** The subset of a `fetch` response that the client uses. */
 export interface HttpResponse {
@@ -167,11 +172,30 @@ export interface GmailClientOptions {
   refreshToken: string;
   fetch?: HttpFetch;
   now?: () => number;
+  /** Waits between retries; injectable so tests do not wait. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Whether Gmail asked to slow down (429, or a 403 for a rate limit or quota) or failed
+ * temporarily (500, 502, 503, 504). Those are retried after a pause.
+ */
+export function isRetryable(error: GmailError): boolean {
+  if (error.status === 429) return true;
+  if (error.status !== null && [500, 502, 503, 504].includes(error.status)) return true;
+  return (
+    error.status === 403 &&
+    !error.reconnectRequired &&
+    /rate ?limit|quota|RESOURCE_EXHAUSTED/i.test(`${error.code} ${error.message}`)
+  );
 }
 
 export function createGmailClient(options: GmailClientOptions): GmailClient {
   const doFetch = options.fetch ?? defaultFetch;
   const now = options.now ?? Date.now;
+  const sleep = options.sleep ?? defaultSleep;
   let cached: AccessToken | null = null;
 
   async function accessToken(forceRefresh: boolean): Promise<string> {
@@ -184,20 +208,31 @@ export function createGmailClient(options: GmailClientOptions): GmailClient {
     return cached.token;
   }
 
-  /** GET on the Gmail API; a 401 refreshes the access token and retries once. */
+  /**
+   * GET on the Gmail API. A 401 refreshes the access token and retries once; rate limits and
+   * temporary server errors are retried after the pauses in {@link RETRY_DELAYS_MS}.
+   */
   async function get(path: string, params: Record<string, string> = {}): Promise<unknown> {
     const query = new URLSearchParams(params).toString();
     const url = `${GMAIL_API_URL}${path}${query ? `?${query}` : ""}`;
-    for (let attempt = 0; ; attempt++) {
-      const token = await accessToken(attempt > 0);
+    let refreshed = false;
+    let retries = 0;
+    for (;;) {
+      const token = await accessToken(refreshed);
       const response = await doFetch(url, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
-      if (response.status === 401 && attempt === 0) continue;
+      if (response.status === 401 && !refreshed) {
+        refreshed = true;
+        continue;
+      }
       const json = await readJson(response);
-      if (!response.ok) throw apiError(response.status, json);
-      return json;
+      if (response.ok) return json;
+      const error = apiError(response.status, json);
+      if (!isRetryable(error) || retries >= RETRY_DELAYS_MS.length) throw error;
+      await sleep(RETRY_DELAYS_MS[retries]!);
+      retries += 1;
     }
   }
 

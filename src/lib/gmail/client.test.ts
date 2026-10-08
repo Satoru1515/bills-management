@@ -10,6 +10,7 @@ import {
 import {
   GMAIL_API_URL,
   GOOGLE_TOKEN_URL,
+  RETRY_DELAYS_MS,
   GmailError,
   createGmailClient,
   gmailSearchDate,
@@ -155,13 +156,17 @@ describe("googleOAuthCredentials", () => {
 describe("createGmailClient", () => {
   function client(handler: Handler, now = () => T0) {
     const fake = fakeFetch(handler);
+    const sleeps: number[] = [];
     const gmail = createGmailClient({
       credentials: CREDENTIALS,
       refreshToken: REFRESH_TOKEN,
       fetch: fake.fetch,
       now,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
     });
-    return { gmail, calls: fake.calls };
+    return { gmail, calls: fake.calls, sleeps };
   }
 
   describe("listMessages", () => {
@@ -362,6 +367,47 @@ describe("createGmailClient", () => {
       expect((error as Error).message).toContain("insufficient authentication scopes");
     });
 
+    it("waits and retries when Gmail says the per-minute quota is used up", async () => {
+      let refusals = 2;
+      const { gmail, calls, sleeps } = client((call) => {
+        if (isToken(call)) return tokenReply();
+        if (refusals > 0) {
+          refusals -= 1;
+          return {
+            status: 403,
+            json: {
+              error: {
+                code: 403,
+                message:
+                  "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user' of service 'gmail.googleapis.com'.",
+                status: "PERMISSION_DENIED",
+              },
+            },
+          };
+        }
+        return { json: { messages: [{ id: "m1", threadId: "t1" }] } };
+      });
+
+      await expect(gmail.listMessages("q")).resolves.toEqual([{ id: "m1", threadId: "t1" }]);
+      expect(sleeps).toEqual([RETRY_DELAYS_MS[0], RETRY_DELAYS_MS[1]]);
+      expect(apiCalls(calls)).toHaveLength(3);
+    });
+
+    it("retries a 429 and a temporary server error", async () => {
+      const replies = [{ status: 429 }, { status: 503 }];
+      const { gmail, sleeps } = client((call) =>
+        isToken(call) ? tokenReply() : (replies.shift() ?? { json: { messages: [] } }),
+      );
+      await expect(gmail.listMessages("q")).resolves.toEqual([]);
+      expect(sleeps).toHaveLength(2);
+    });
+
+    it("does not retry errors that will not go away", async () => {
+      const { gmail, sleeps } = client((call) => (isToken(call) ? tokenReply() : undefined));
+      await expect(gmail.getMessage("gone")).rejects.toMatchObject({ status: 404 });
+      expect(sleeps).toEqual([]);
+    });
+
     it("keeps the connection on rate limits and server errors", async () => {
       const rateLimited = client((call) =>
         isToken(call)
@@ -381,6 +427,8 @@ describe("createGmailClient", () => {
         code: "userRateLimitExceeded",
         reconnectRequired: false,
       });
+      // Gave up only after every pause.
+      expect(rateLimited.sleeps).toEqual([...RETRY_DELAYS_MS]);
 
       const down = client((call) => (isToken(call) ? tokenReply() : { status: 500 }));
       await expect(down.gmail.getMessage("m1")).rejects.toMatchObject({

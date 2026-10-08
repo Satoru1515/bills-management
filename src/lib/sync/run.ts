@@ -42,8 +42,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const INITIAL_LOOKBACK_DAYS = 183;
 /** Later syncs search from this long before the last one started (docs/parsing-spec.md §6). */
 export const SEARCH_OVERLAP_MS = DAY_MS;
-/** Gmail messages fetched in parallel. */
-export const FETCH_CONCURRENCY = 5;
+/** Gmail messages fetched in parallel (kept low: Gmail limits requests per user per minute). */
+export const FETCH_CONCURRENCY = 3;
 /** Errors kept in `sync_runs.errors`; the rest are summarized in one entry. */
 export const MAX_RECORDED_ERRORS = 50;
 const MAX_ERROR_LENGTH = 500;
