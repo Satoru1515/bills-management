@@ -35,14 +35,14 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] RLS: cada usuario solo ve y edita sus filas. Políticas + test manual documentado.
 - [x] `src/lib/supabase/{client,server}.ts` con `@supabase/ssr`. Tipos generados (`npm run db:types`).
 - [x] `src/lib/repo/transactions.ts`: `upsertMany`, `listByMonth`, `updateCategory`, `setIgnored`. Tests contra un mock.
-- [ ] Cerrar fase: PR.
+- [x] Cerrar fase: PR.
 
 ## Fase 3 — Auth y permiso de Gmail  (rama `fase/3-auth`)
 
 - [ ] Supabase Auth con Google, scope `https://www.googleapis.com/auth/gmail.readonly`, `access_type=offline`, `prompt=consent`. Guardar refresh token en `gmail_connections` cifrado con `ENCRYPTION_KEY` (AES-256-GCM, `src/lib/crypto.ts` + tests).
 - [ ] Páginas `/login` y callback. Middleware que protege `/app/*`.
 - [ ] `docs/google-cloud-setup.md`: paso a paso para crear el proyecto en Google Cloud, pantalla de consentimiento en modo Testing, usuarios de prueba, credenciales OAuth, URIs de redirección.
-- [ ] Cerrar fase: PR.
+- [x] Cerrar fase: PR.
 
 ## Fase 4 — Sincronización con Gmail  (rama `fase/4-sync`)
 
@@ -50,7 +50,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [ ] `src/lib/sync/run.ts`: para el usuario, buscar desde `last_sync_at - 1 día` los 4 remitentes, parsear, categorizar, deduplicar, `upsertMany` (no pisar `categoria`/`ignorar` editados), registrar `sync_runs`.
 - [ ] `POST /api/sync` (autenticado) y botón "Actualizar ahora" en la UI. `GET /api/cron/sync` protegido con `CRON_SECRET` para Vercel Cron cada 15 min (`vercel.json`).
 - [ ] Tests del pipeline con fixtures (sin red).
-- [ ] Cerrar fase: PR.
+- [x] Cerrar fase: PR.
 
 ## Fase 5 — Panel (UI)  (rama `fase/5-dashboard`)
 
@@ -65,7 +65,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [ ] `manifest.webmanifest`, íconos, service worker básico (cache de assets, página offline). Instalable desde el navegador.
 - [ ] Capacitor: `npx cap init`, `capacitor.config.ts` apuntando a la URL desplegada, proyecto Android generado (`android/` en el repo). Documentar cómo construir el APK.
 - [ ] Login con Google dentro de Capacitor (abrir en navegador del sistema y volver por deep link). Documentar.
-- [ ] Cerrar fase: PR.
+- [x] Cerrar fase: PR.
 
 ## Fase 7 — Despliegue  (rama `fase/7-deploy`)
 
