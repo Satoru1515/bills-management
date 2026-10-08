@@ -37,7 +37,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] `src/lib/repo/transactions.ts`: `upsertMany`, `listByMonth`, `updateCategory`, `setIgnored`. Tests contra un mock.
 - [x] Cerrar fase: PR.
 
-## Fase 3 — Auth y permiso de Gmail  (rama `fase/3-auth`)
+## Fase 3 — Auth y permiso de Gmail  (rama `fase/3-auth`) [PR abierto]
 
 - [x] Supabase Auth con Google, scope `https://www.googleapis.com/auth/gmail.readonly`, `access_type=offline`, `prompt=consent`. Guardar refresh token en `gmail_connections` cifrado con `ENCRYPTION_KEY` (AES-256-GCM, `src/lib/crypto.ts` + tests).
 - [x] Páginas `/login` y callback. Middleware que protege `/app/*`.
