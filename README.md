@@ -57,8 +57,17 @@ npm run dev                  # http://localhost:3000
 | `npm run test:watch`   | Vitest in watch mode                       |
 | `npm run format`       | Format the code with Prettier              |
 | `npm run format:check` | Check formatting without writing           |
+| `npm run db:types`     | Regenerate `src/lib/supabase/database.types.ts` from the local Supabase database |
 
 Before committing, `npm run lint`, `npm run typecheck` and `npm test` must all pass.
+
+### Supabase clients and database types
+
+- `src/lib/supabase/client.ts`: browser client for Client Components (anon key, user session, RLS applies).
+- `src/lib/supabase/server.ts`: server client for Server Components, Server Actions and Route Handlers (anon key + session cookies, RLS applies). Create one per request.
+- `src/lib/supabase/admin.ts`: service-role client (bypasses RLS). Server-only, for the cron sync and Gmail tokens; always filter by `user_id`.
+
+`npm run db:types` needs the local stack running (`npx supabase start`, which requires Docker). Without Docker, use `npx supabase gen types typescript --project-id <ref> --schema public` against the hosted project. After changing a migration, regenerate the types: `src/lib/supabase/database.types.test.ts` compares them with the schema the migrations build and fails if they drift.
 
 ## Environment variables
 
@@ -97,6 +106,7 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 ├── public/                 # Static assets
 ├── src/
 │   ├── app/                # Next.js App Router pages, layouts and API routes
+│   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
 │   └── test/               # Shared test files (smoke test)
 ├── CLAUDE.md               # Project conventions and rules for the automated routine
 ├── PLAN.md                 # Phased development plan
