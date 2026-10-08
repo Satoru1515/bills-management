@@ -17,7 +17,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] README.md en inglés: qué hace, stack, cómo correr local, variables de entorno, estructura de carpetas.
 - [x] Verificar que `npm run lint`, `npm run typecheck` y `npm test` pasan en limpio. Cerrar fase: PR.
 
-## Fase 1 — Dominio y parsers  (rama `fase/1-parsers`)
+## Fase 1 — Dominio y parsers  (rama `fase/1-parsers`) [PR abierto]
 
 - [x] `src/lib/domain/types.ts`: tipos `Transaction`, `Bank`, `Currency`, `Category`, `ParsedEmail`, `RawEmail` (id, threadId, from, subject, date, snippet, body).
 - [x] `src/lib/parsers/scotiabank.ts` + tests con fixtures en `src/lib/parsers/__fixtures__/`. Cubrir los 3 asuntos de consumo, "Pago de factura", y los que se ignoran (pagos recibidos, $0.10, billetera).
