@@ -89,6 +89,15 @@ Add `<app url>/auth/callback` to the Supabase redirect allow-list (Authenticatio
 
 For the local stack, `supabase/config.toml` enables the Google provider with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` taken from the environment (export them, or put them in `supabase/.env`, which is git-ignored). On the hosted project, enable Google under Authentication > Providers with the same credentials.
 
+### Reading Gmail
+
+`src/lib/gmail/client.ts` is a small read-only Gmail API client over `fetch` (server-only, no extra dependencies). `createGmailClient({ credentials: googleOAuthCredentials(), refreshToken })` gets access tokens from the stored refresh token (cached until a minute before they expire, refreshed and retried once on a 401) and offers:
+
+- `listMessages(query, after?)`: ids of every message matching a Gmail search, all pages (capped at 2000). `after` adds `after:YYYY/MM/DD` in Dominican Republic time.
+- `getMessage(id)`: the message as a `RawEmail`. The body is the `text/plain` part, or the HTML converted to text (`src/lib/gmail/mime.ts`: table cells joined with ` | `, entities and charsets decoded, attached files skipped). Large bodies stored as attachments are fetched too.
+
+Failures throw `GmailError`; `reconnectRequired` is true when the refresh token was revoked or expired (`invalid_grant`) or the Gmail scope is missing, so the user has to sign in again.
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -130,6 +139,7 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── lib/auth/           # Google sign-in options and Gmail refresh token storage
 │   ├── lib/crypto.ts       # AES-256-GCM encryption for stored secrets
 │   ├── lib/domain/         # Types, categorization, deduplication
+│   ├── lib/gmail/          # Read-only Gmail API client and MIME-to-text conversion
 │   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
 │   ├── lib/repo/           # Data access (transactions, Gmail connections)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
@@ -146,7 +156,6 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 Planned as the phases land (see `PLAN.md`):
 
 ```
-src/lib/gmail/      # Gmail API client
 src/lib/sync/       # Sync pipeline: fetch, parse, categorize, dedupe, upsert
 android/            # Capacitor Android project
 ```
