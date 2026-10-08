@@ -54,6 +54,9 @@ export const UPSERT_CHUNK_SIZE = 500;
 /** Rows per page when listing; PostgREST caps responses at 1000 rows by default. */
 export const LIST_PAGE_SIZE = 1000;
 
+/** Message ids per `in (...)` filter, so the request URL stays short. */
+export const ID_FILTER_CHUNK_SIZE = 100;
+
 const COLUMNS =
   "id, user_id, gmail_message_id, date, month, bank, card_last4, amount, currency, merchant, kind, category, ignored, source";
 
@@ -90,6 +93,26 @@ export async function upsertMany(
   }
 
   return { inserted, skipped: items.length - inserted.length };
+}
+
+/** The subset of `gmailMessageIds` already stored as the user's transactions. */
+export async function listStoredMessageIds(
+  client: DbClient,
+  userId: string,
+  gmailMessageIds: readonly string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(gmailMessageIds)];
+  const stored = new Set<string>();
+  for (let start = 0; start < unique.length; start += ID_FILTER_CHUNK_SIZE) {
+    const { data, error } = await client
+      .from("transactions")
+      .select("gmail_message_id")
+      .eq("user_id", userId)
+      .in("gmail_message_id", unique.slice(start, start + ID_FILTER_CHUNK_SIZE));
+    if (error) throw toRepoError("listStoredMessageIds", error);
+    for (const row of data ?? []) if (row.gmail_message_id) stored.add(row.gmail_message_id);
+  }
+  return stored;
 }
 
 /** All of the user's transactions in a `YYYY-MM` month, newest first (ignored ones included). */

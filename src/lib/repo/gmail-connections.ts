@@ -61,3 +61,29 @@ export async function getRefreshToken(
   if (!data) return null;
   return decrypt(data.refresh_token_encrypted, key, userId);
 }
+
+/**
+ * When the user's last successful sync started, or null if it never ran.
+ * `undefined` if Gmail is not connected.
+ */
+export async function getLastSyncAt(
+  admin: DbClient,
+  userId: string,
+): Promise<string | null | undefined> {
+  const { data, error } = await admin
+    .from("gmail_connections")
+    .select("last_sync_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new RepoError("getLastSyncAt", error.message, error.code);
+  return data ? data.last_sync_at : undefined;
+}
+
+/** Records the start time of a successful sync; the next one searches from a day before it. */
+export async function setLastSyncAt(admin: DbClient, userId: string, at: string): Promise<void> {
+  const { error } = await admin
+    .from("gmail_connections")
+    .update({ last_sync_at: at })
+    .eq("user_id", userId);
+  if (error) throw new RepoError("setLastSyncAt", error.message, error.code);
+}

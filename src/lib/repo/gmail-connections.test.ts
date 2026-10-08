@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
-import { getRefreshToken, saveGmailConnection } from "./gmail-connections";
+import {
+  getLastSyncAt,
+  getRefreshToken,
+  saveGmailConnection,
+  setLastSyncAt,
+} from "./gmail-connections";
 import { RepoError } from "./transactions";
 
 // Test-only key; never a real secret.
@@ -95,5 +100,45 @@ describe("getRefreshToken", () => {
     const mock = createSupabaseMock();
     mock.respond({ error: { message: "boom" } });
     await expect(getRefreshToken(mock.client, USER, KEY)).rejects.toThrow("getRefreshToken: boom");
+  });
+});
+
+describe("getLastSyncAt / setLastSyncAt", () => {
+  it("reads last_sync_at, null if never synced, undefined if not connected", async () => {
+    const mock = createSupabaseMock();
+    mock.respond(
+      { data: { last_sync_at: "2026-10-07T16:00:00+00:00" } },
+      { data: { last_sync_at: null } },
+      { data: null },
+    );
+    await expect(getLastSyncAt(mock.client, USER)).resolves.toBe("2026-10-07T16:00:00+00:00");
+    await expect(getLastSyncAt(mock.client, USER)).resolves.toBeNull();
+    await expect(getLastSyncAt(mock.client, USER)).resolves.toBeUndefined();
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "eq", "maybeSingle"]);
+    expect(argsOf(mock.queries[0], "select")).toEqual([["last_sync_at"]]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([["user_id", USER]]);
+  });
+
+  it("updates only last_sync_at of the user's row", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: null });
+    await setLastSyncAt(mock.client, USER, "2026-10-07T16:00:00.000Z");
+    expect(mock.queries[0]!.table).toBe("gmail_connections");
+    expect(methodsOf(mock.queries[0])).toEqual(["update", "eq"]);
+    expect(argsOf(mock.queries[0], "update")).toEqual([
+      [{ last_sync_at: "2026-10-07T16:00:00.000Z" }],
+    ]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([["user_id", USER]]);
+  });
+
+  it("wraps database errors in RepoError", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ error: { message: "boom", code: "XX000" } }, { error: { message: "nope" } });
+    await expect(getLastSyncAt(mock.client, USER)).rejects.toMatchObject({
+      name: "RepoError",
+      message: "getLastSyncAt: boom",
+      code: "XX000",
+    });
+    await expect(setLastSyncAt(mock.client, USER, "x")).rejects.toThrow("setLastSyncAt: nope");
   });
 });

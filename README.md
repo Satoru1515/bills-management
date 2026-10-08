@@ -98,6 +98,18 @@ For the local stack, `supabase/config.toml` enables the Google provider with `GO
 
 Failures throw `GmailError`; `reconnectRequired` is true when the refresh token was revoked or expired (`invalid_grant`) or the Gmail scope is missing, so the user has to sign in again.
 
+### Syncing
+
+`runSync(createSyncDeps(createAdminClient()), userId, "manual" | "cron")` (`src/lib/sync/run.ts`) syncs one user:
+
+1. Creates a `running` row in `sync_runs`.
+2. Searches each known sender (`SENDER_QUERIES`; PayPal only `subject:receipt`) from a day before `last_sync_at`, or 90 days back on the first sync.
+3. Skips messages already stored, except Scotiabank ones, which are read again so a later alert for a saved purchase is recognized as a repeat.
+4. Parses, collapses repeated Scotiabank alerts (keeping the stored one if any), categorizes with the user's `category_rules` first, and inserts the new purchases (existing rows are never touched, so edited categories and `ignored` survive).
+5. Completes the `sync_runs` row (`ok` or `error`, counts, up to 50 errors) and moves `last_sync_at` to the run's start only if nothing failed.
+
+Expected failures are returned, not thrown; `reconnectRequired` tells the UI to ask for a new Google sign-in.
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -141,8 +153,9 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── lib/domain/         # Types, categorization, deduplication
 │   ├── lib/gmail/          # Read-only Gmail API client and MIME-to-text conversion
 │   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
-│   ├── lib/repo/           # Data access (transactions, Gmail connections)
+│   ├── lib/repo/           # Data access (transactions, Gmail connections, category rules, sync runs)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
+│   ├── lib/sync/           # Sync pipeline: search, parse, dedupe, categorize, store, log the run
 │   └── test/               # Shared test files (smoke test)
 ├── supabase/               # Supabase CLI config and SQL migrations
 ├── CLAUDE.md               # Project conventions and rules for the automated routine
@@ -156,7 +169,6 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 Planned as the phases land (see `PLAN.md`):
 
 ```
-src/lib/sync/       # Sync pipeline: fetch, parse, categorize, dedupe, upsert
 android/            # Capacitor Android project
 ```
 

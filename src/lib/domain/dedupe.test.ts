@@ -40,6 +40,14 @@ describe("dedupeScotiabank", () => {
     expect(ids(dropped)).toEqual(["sc-dup-abroad"]);
   });
 
+  it("keeps the alert already stored by an earlier sync over the preferred subject", () => {
+    const all = [cnp, use, abroad].map((raw) => message(raw));
+    const stored = new Set(["sc-dup-cnp"]);
+    const { kept, dropped } = dedupeScotiabank(all, { isStored: (m) => stored.has(m.raw.id) });
+    expect(ids(kept)).toEqual(["sc-dup-cnp"]);
+    expect(ids(dropped)).toEqual(["sc-dup-use", "sc-dup-abroad"]);
+  });
+
   it("keeps a second real purchase of the same amount outside the 2 minute window", () => {
     const all = [cnp, use, abroad, scotiabank.repeatedPurchaseLater].map((raw) => message(raw));
     const { kept } = dedupeScotiabank(all);

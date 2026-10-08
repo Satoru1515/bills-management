@@ -49,8 +49,15 @@ function receivedMs(raw: RawEmail): number {
  * so two alerts with the same subject are two real purchases. In each group the
  * "Uso de tarjeta de crédito" alert is kept if present; otherwise the first one received.
  * Messages from other banks, or with an unreadable date, are always kept.
+ *
+ * `isStored` marks alerts already saved by an earlier sync: a group that has one keeps it, so a
+ * later alert for the same purchase is never stored as a second transaction.
  */
-export function dedupeScotiabank<T extends ParsedMessage>(messages: readonly T[]): DedupeResult<T> {
+export function dedupeScotiabank<T extends ParsedMessage>(
+  messages: readonly T[],
+  options: { isStored?: (item: T) => boolean } = {},
+): DedupeResult<T> {
+  const isStored = options.isStored ?? (() => false);
   const groups: Group<T>[] = [];
   const byReceipt = messages
     .map((item, index) => ({ item, index }))
@@ -75,7 +82,10 @@ export function dedupeScotiabank<T extends ParsedMessage>(messages: readonly T[]
 
   const droppedIndexes = new Set<number>();
   for (const { members } of groups) {
-    const keep = members.find((m) => m.subject === PREFERRED_SUBJECT) ?? members[0];
+    const keep =
+      members.find((m) => isStored(m.item)) ??
+      members.find((m) => m.subject === PREFERRED_SUBJECT) ??
+      members[0];
     for (const m of members) if (m !== keep) droppedIndexes.add(m.index);
   }
 

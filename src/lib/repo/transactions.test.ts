@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
 import {
+  ID_FILTER_CHUNK_SIZE,
   LIST_PAGE_SIZE,
   RepoError,
   UPSERT_CHUNK_SIZE,
   listByMonth,
+  listStoredMessageIds,
   setIgnored,
   toTransaction,
   updateCategory,
@@ -309,5 +311,44 @@ describe("toTransaction", () => {
     ["date", { date: "not a date" }],
   ])("rejects a row with an invalid %s", (key, overrides) => {
     expect(() => toTransaction(row(overrides))).toThrow(`invalid ${key}`);
+  });
+});
+
+describe("listStoredMessageIds", () => {
+  it("does not query for an empty list", async () => {
+    const mock = createSupabaseMock();
+    await expect(listStoredMessageIds(mock.client, USER, [])).resolves.toEqual(new Set());
+    expect(mock.queries).toHaveLength(0);
+  });
+
+  it("returns the stored ids among the given ones, in chunks, for the user only", async () => {
+    const ids = Array.from({ length: ID_FILTER_CHUNK_SIZE + 2 }, (_, i) => `m${i}`);
+    const last = `m${ID_FILTER_CHUNK_SIZE + 1}`;
+    const mock = createSupabaseMock();
+    mock.respond(
+      { data: [{ gmail_message_id: "m1" }, { gmail_message_id: "m7" }] },
+      { data: [{ gmail_message_id: last }] },
+    );
+
+    // "m1" repeated: ids are deduplicated before querying.
+    const stored = await listStoredMessageIds(mock.client, USER, [...ids, "m1"]);
+
+    expect(stored).toEqual(new Set(["m1", "m7", last]));
+    expect(mock.queries).toHaveLength(2);
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "eq", "in"]);
+    expect(argsOf(mock.queries[0], "select")).toEqual([["gmail_message_id"]]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([["user_id", USER]]);
+    expect(argsOf(mock.queries[0], "in")).toEqual([
+      ["gmail_message_id", ids.slice(0, ID_FILTER_CHUNK_SIZE)],
+    ]);
+    expect(argsOf(mock.queries[1], "in")).toEqual([
+      ["gmail_message_id", ids.slice(ID_FILTER_CHUNK_SIZE)],
+    ]);
+  });
+
+  it("wraps database errors in RepoError", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ error: { message: "boom" } });
+    await expect(listStoredMessageIds(mock.client, USER, ["m1"])).rejects.toThrow(RepoError);
   });
 });
