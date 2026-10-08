@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bills</string>
+    <string name="title_activity_main">Bills</string>
+    <string name="package_name">com.satoru1515.bills</string>
+    <string name="custom_url_scheme">com.satoru1515.bills</string>
+</resources>

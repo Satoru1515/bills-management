@@ -34,7 +34,7 @@ Only the last 4 digits of a card are stored; balances and full account numbers a
 
 ## Running locally
 
-Requirements: Node.js 20 or newer (developed on Node 22) and npm.
+Requirements: Node.js 20 or newer (developed on Node 22; the Capacitor CLI for the Android app needs 22) and npm.
 
 ```bash
 git clone https://github.com/Satoru1515/bills-management.git
@@ -58,7 +58,9 @@ npm run dev                  # http://localhost:3000
 | `npm run format`       | Format the code with Prettier              |
 | `npm run format:check` | Check formatting without writing           |
 | `npm run db:types`     | Regenerate `src/lib/supabase/database.types.ts` from the local Supabase database |
-| `npm run icons`        | Redraw the app icons and favicon (`src/lib/pwa/icon-image.ts`) |
+| `npm run icons`        | Redraw the app icons, favicon and Android launcher icons and splash screens (`src/lib/pwa/icon-image.ts`) |
+| `npm run android:sync` | Copy the Capacitor config (with `CAP_SERVER_URL`) into `android/` |
+| `npm run android:open` | Open the Android project in Android Studio |
 
 Before committing, `npm run lint`, `npm run typecheck` and `npm test` must all pass.
 
@@ -139,6 +141,10 @@ The app is installable from the browser (Chrome/Edge: **Install app** in the add
 - **Icons**: a white card on the accent blue, drawn in code by `src/lib/pwa/icon-image.ts` (no image tools needed). `npm run icons` writes `public/icons/icon-192.png`, `icon-512.png`, `maskable-512.png` (edge to edge, card inside the safe zone), `src/app/apple-icon.png` and `src/app/favicon.ico`; a test fails if the committed files no longer match the drawing.
 - **Service worker**: `public/sw.js`, registered by `src/app/service-worker.tsx` (`src/lib/pwa/register.ts`). Build assets under `/_next/static` are cached on first use (newest 200 kept); icons and the manifest are served from the cache and refreshed in the background; page navigations always go to the network and fall back to `public/offline.html` when it is unreachable. Pages, API routes, auth and server actions are never cached, since they hold private data. Bump `VERSION` in `sw.js` when its caching changes; old caches are deleted on activation. `next.config.ts` serves `sw.js` with `Cache-Control: no-cache`, and the middleware skips the PWA files.
 
+### Android app
+
+`android/` is a [Capacitor](https://capacitorjs.com/) project whose WebView opens the deployed site (`CAP_SERVER_URL`, read by `capacitor.config.ts` at `npm run android:sync`), so the app runs the same code as the website. Building the APK, signing a release and the app ID are covered in [`docs/android.md`](docs/android.md). Google sign-in inside the app is not wired up yet (Google blocks OAuth in WebViews); it is the next task of the plan.
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -170,10 +176,13 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 
 ```
 .
+├── android/                # Capacitor Android project (see docs/android.md)
 ├── docs/
+│   ├── android.md          # Building the Android app (APK) with Capacitor
 │   ├── google-cloud-setup.md # Google Cloud project, OAuth consent screen and client for sign-in + Gmail
 │   ├── parsing-spec.md     # Email formats per bank and category rules (source of truth for parsers)
 │   └── rutina.md           # Prompt of the automated development routine
+├── mobile/www/             # Page the Android app shows when built without CAP_SERVER_URL
 ├── public/                 # Static assets: icons/, sw.js (service worker), offline.html
 ├── scripts/                # generate-icons.mjs (`npm run icons`)
 ├── src/
@@ -188,21 +197,16 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── lib/repo/           # Data access (transactions, profiles, Gmail connections, category rules, sync runs)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
 │   ├── lib/sync/           # Sync pipeline + the manual and cron sync request handlers
-│   └── test/               # Shared test files (smoke test)
+│   └── test/               # Shared test files (smoke test, Capacitor config)
 ├── supabase/               # Supabase CLI config and SQL migrations
 ├── CLAUDE.md               # Project conventions and rules for the automated routine
 ├── PLAN.md                 # Phased development plan
 ├── PROGRESS.md             # Log of completed tasks
 ├── .env.example            # Environment variable template
+├── capacitor.config.ts     # Capacitor config (app ID, URL the Android app opens)
 ├── vercel.json             # Vercel Cron schedule for /api/cron/sync
 ├── vitest.config.mts       # Vitest config (jsdom, `@/` alias)
 └── vitest.setup.ts         # jest-dom matchers and cleanup
-```
-
-Planned as the phases land (see `PLAN.md`):
-
-```
-android/            # Capacitor Android project
 ```
 
 ## License

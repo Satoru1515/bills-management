@@ -19,3 +19,6 @@ ios/App/Pods/
 *.tsbuildinfo
 next-env.d.ts
 npm-debug.log*
+*.jks
+*.keystore
+android/app/release/
