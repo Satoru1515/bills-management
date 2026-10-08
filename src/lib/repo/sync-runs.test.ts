@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
-import { finishSyncRun, hasRunningSync, startSyncRun } from "./sync-runs";
+import { finishSyncRun, getLatestSyncRun, hasRunningSync, startSyncRun } from "./sync-runs";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const RUN = "33333333-3333-4333-8333-333333333333";
@@ -112,5 +112,55 @@ describe("hasRunningSync", () => {
     const mock = createSupabaseMock();
     mock.respond({ error: { message: "boom" } });
     await expect(hasRunningSync(mock.client, USER, "x")).rejects.toThrow("hasRunningSync: boom");
+  });
+});
+
+describe("getLatestSyncRun", () => {
+  const ROW = {
+    status: "ok",
+    trigger: "cron",
+    started_at: "2026-10-07T16:00:00+00:00",
+    finished_at: "2026-10-07T16:00:04+00:00",
+    new_transactions: 3,
+    unparsed: 1,
+    errors: [{ gmailMessageId: "m1", message: "timeout" }],
+  };
+
+  it("reads the newest run of the user", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: ROW });
+
+    await expect(getLatestSyncRun(mock.client, USER)).resolves.toEqual({
+      status: "ok",
+      trigger: "cron",
+      startedAt: "2026-10-07T16:00:00+00:00",
+      finishedAt: "2026-10-07T16:00:04+00:00",
+      newTransactions: 3,
+      unparsed: 1,
+      errorCount: 1,
+    });
+    expect(mock.queries[0]!.calls).toEqual([
+      {
+        method: "select",
+        args: ["status, trigger, started_at, finished_at, new_transactions, unparsed, errors"],
+      },
+      { method: "eq", args: ["user_id", USER] },
+      { method: "order", args: ["started_at", { ascending: false }] },
+      { method: "limit", args: [1] },
+      { method: "maybeSingle", args: [] },
+    ]);
+  });
+
+  it("is null before the first sync", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: null });
+    await expect(getLatestSyncRun(mock.client, USER)).resolves.toBeNull();
+  });
+
+  it("rejects unknown statuses and wraps database errors", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: { ...ROW, status: "paused" } }, { error: { message: "boom" } });
+    await expect(getLatestSyncRun(mock.client, USER)).rejects.toThrow('invalid status "paused"');
+    await expect(getLatestSyncRun(mock.client, USER)).rejects.toThrow("getLatestSyncRun: boom");
   });
 });

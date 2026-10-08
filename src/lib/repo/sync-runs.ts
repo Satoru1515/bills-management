@@ -82,3 +82,48 @@ export async function hasRunningSync(
   if (error) throw new RepoError("hasRunningSync", error.message, error.code);
   return (data ?? []).length > 0;
 }
+
+/** The latest sync of a user, as the settings page shows it. */
+export interface SyncRunRecord {
+  status: SyncRunStatus | "running";
+  trigger: SyncTrigger;
+  startedAt: string;
+  finishedAt: string | null;
+  newTransactions: number;
+  unparsed: number;
+  errorCount: number;
+}
+
+const RUN_STATUSES: readonly string[] = ["running", "ok", "error"];
+const TRIGGERS: readonly string[] = ["manual", "cron"];
+
+/** The user's most recent sync (running or finished), or null if none ever started. */
+export async function getLatestSyncRun(
+  client: DbClient,
+  userId: string,
+): Promise<SyncRunRecord | null> {
+  const { data, error } = await client
+    .from("sync_runs")
+    .select("status, trigger, started_at, finished_at, new_transactions, unparsed, errors")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new RepoError("getLatestSyncRun", error.message, error.code);
+  if (!data) return null;
+  if (!RUN_STATUSES.includes(data.status) || !TRIGGERS.includes(data.trigger)) {
+    throw new RepoError(
+      "getLatestSyncRun",
+      `invalid status "${data.status}" or trigger "${data.trigger}"`,
+    );
+  }
+  return {
+    status: data.status as SyncRunRecord["status"],
+    trigger: data.trigger as SyncTrigger,
+    startedAt: data.started_at,
+    finishedAt: data.finished_at,
+    newTransactions: data.new_transactions,
+    unparsed: data.unparsed,
+    errorCount: Array.isArray(data.errors) ? data.errors.length : 0,
+  };
+}

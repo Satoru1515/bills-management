@@ -97,3 +97,35 @@ export async function listConnectedUserIds(admin: DbClient): Promise<string[]> {
   if (error) throw new RepoError("listConnectedUserIds", error.message, error.code);
   return (data ?? []).map((row) => row.user_id);
 }
+
+/** What the settings page shows about the user's Gmail connection (never the token). */
+export interface GmailConnectionStatus {
+  email: string;
+  scope: string | null;
+  /** Start of the last successful sync, or null if none finished yet. */
+  lastSyncAt: string | null;
+  connectedAt: string;
+}
+
+/**
+ * The user's Gmail connection, or null if Gmail is not connected. Reads only the columns
+ * users may see, so it works with the user's own client.
+ */
+export async function getGmailConnectionStatus(
+  client: DbClient,
+  userId: string,
+): Promise<GmailConnectionStatus | null> {
+  const { data, error } = await client
+    .from("gmail_connections")
+    .select("email, scope, last_sync_at, created_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new RepoError("getGmailConnectionStatus", error.message, error.code);
+  if (!data) return null;
+  return {
+    email: data.email,
+    scope: data.scope,
+    lastSyncAt: data.last_sync_at,
+    connectedAt: data.created_at,
+  };
+}

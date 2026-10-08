@@ -22,3 +22,25 @@ export async function getUsdToDopRate(client: DbClient, userId: string): Promise
   const rate = Number(value);
   return Number.isFinite(rate) && rate > 0 ? rate : null;
 }
+
+/**
+ * Saves the user's USD → DOP rate; null goes back to the app default. Returns false if the
+ * user has no profile row.
+ */
+export async function setUsdToDopRate(
+  client: DbClient,
+  userId: string,
+  rate: number | null,
+): Promise<boolean> {
+  if (rate !== null && !(Number.isFinite(rate) && rate > 0)) {
+    throw new RepoError("setUsdToDopRate", `invalid rate "${rate}"`);
+  }
+  const { data, error } = await client
+    .from("profiles")
+    .update({ usd_to_dop_rate: rate })
+    .eq("id", userId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new RepoError("setUsdToDopRate", error.message, error.code);
+  return data !== null;
+}

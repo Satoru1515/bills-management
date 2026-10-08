@@ -4,6 +4,7 @@ import { isCategory } from "@/lib/domain/categorize";
 import type { Category } from "@/lib/domain/types";
 
 export const DASHBOARD_PATH = "/app";
+export const SETTINGS_PATH = "/app/settings";
 
 export interface DashboardFilters {
   /** Show only this category in the breakdowns; null or missing = every category. */

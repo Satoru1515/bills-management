@@ -36,7 +36,7 @@ export function syncFeedback(status: number, body: unknown): SyncFeedback {
   if (body.status === "error") {
     return error(
       body.reconnectRequired
-        ? "Gmail access has expired or was revoked. Sign out and sign in with Google again."
+        ? "Gmail access has expired or was revoked. Reconnect Gmail in Settings."
         : RETRY_LATER,
     );
   }

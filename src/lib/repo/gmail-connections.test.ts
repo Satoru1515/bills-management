@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { argsOf, createSupabaseMock, methodsOf } from "@/test/supabase-mock";
 import {
+  getGmailConnectionStatus,
   getLastSyncAt,
   getRefreshToken,
   listConnectedUserIds,
@@ -159,5 +160,37 @@ describe("listConnectedUserIds", () => {
     const mock = createSupabaseMock();
     mock.respond({ error: { message: "boom" } });
     await expect(listConnectedUserIds(mock.client)).rejects.toThrow("listConnectedUserIds: boom");
+  });
+});
+
+describe("getGmailConnectionStatus", () => {
+  it("reads only the columns users may see", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({
+      data: {
+        email: "satoru@gmail.com",
+        scope: "openid email",
+        last_sync_at: "2026-10-07T16:00:00+00:00",
+        created_at: "2026-10-01T12:00:00+00:00",
+      },
+    });
+
+    await expect(getGmailConnectionStatus(mock.client, USER)).resolves.toEqual({
+      email: "satoru@gmail.com",
+      scope: "openid email",
+      lastSyncAt: "2026-10-07T16:00:00+00:00",
+      connectedAt: "2026-10-01T12:00:00+00:00",
+    });
+    expect(mock.queries[0]!.table).toBe("gmail_connections");
+    expect(argsOf(mock.queries[0], "select")).toEqual([["email, scope, last_sync_at, created_at"]]);
+    expect(argsOf(mock.queries[0], "eq")).toEqual([["user_id", USER]]);
+    expect(methodsOf(mock.queries[0])).toEqual(["select", "eq", "maybeSingle"]);
+  });
+
+  it("is null when Gmail is not connected, and wraps errors", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: null }, { error: { message: "boom" } });
+    await expect(getGmailConnectionStatus(mock.client, USER)).resolves.toBeNull();
+    await expect(getGmailConnectionStatus(mock.client, USER)).rejects.toThrow(RepoError);
   });
 });

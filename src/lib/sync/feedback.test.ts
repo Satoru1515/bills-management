@@ -42,7 +42,7 @@ describe("syncFeedback", () => {
   it("asks for a new Google sign-in when the grant no longer works", () => {
     expect(syncFeedback(200, body({ status: "error", reconnectRequired: true }))).toEqual({
       tone: "error",
-      message: "Gmail access has expired or was revoked. Sign out and sign in with Google again.",
+      message: "Gmail access has expired or was revoked. Reconnect Gmail in Settings.",
     });
   });
 
