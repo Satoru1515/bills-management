@@ -52,9 +52,6 @@ describe("syncFeedback", () => {
     expect(syncFeedback(401, { error: "unauthorized" }).message).toBe(
       "Your session has ended. Sign in again.",
     );
-    expect(syncFeedback(400, { error: "invalid_since" }).message).toBe(
-      "Pick a start date in the past, at most two years ago.",
-    );
     expect(syncFeedback(409, { error: "sync_in_progress" }).message).toBe(
       "A sync is already running. Try again in a minute.",
     );

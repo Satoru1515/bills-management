@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
   loadDashboard: vi.fn(),
+  importMonths: [] as ImportMonth[],
 }));
 
 class RedirectError extends Error {
@@ -24,8 +25,12 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 vi.mock("@/lib/dashboard/load", () => ({ loadDashboard: mocks.loadDashboard }));
+vi.mock("@/lib/repo/import-months", () => ({
+  listImportMonths: vi.fn(async () => mocks.importMonths),
+}));
 
 import type { DashboardData } from "@/lib/dashboard/load";
+import type { ImportMonth } from "@/lib/repo/import-months";
 import { monthPeriod, previousPeriod, rangePeriod, type Period } from "@/lib/domain/period";
 import { summarizePeriod } from "@/lib/domain/summary";
 import AppHome from "./page";
@@ -52,6 +57,20 @@ function dashboard(period: Period): DashboardData {
   };
 }
 
+function doneMonth(month: string): ImportMonth {
+  return {
+    id: `import-${month}`,
+    month,
+    status: "done",
+    attempts: 1,
+    nextAttemptAt: "2026-10-07T18:00:00Z",
+    messagesSeen: 10,
+    newTransactions: 4,
+    lastError: null,
+    updatedAt: "2026-10-07T18:00:00Z",
+  };
+}
+
 function props(values: Record<string, string | string[]> = {}) {
   return { searchParams: Promise.resolve(values) };
 }
@@ -60,6 +79,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   mocks.user = { id: "user-1", email: "satoru@example.com" };
+  mocks.importMonths = [doneMonth("2026-10")];
   mocks.loadDashboard.mockReset();
   mocks.loadDashboard.mockImplementation(async (_client, _userId, period: Period) =>
     dashboard(period),
@@ -177,7 +197,23 @@ describe("/app page", () => {
     expect(screen.getByText("vs previous period", { selector: "dt" })).toBeInTheDocument();
     const trend = screen.getByRole("region", { name: /Month by month/ });
     expect(trend).toHaveTextContent("October 2026");
-    expect(screen.getByRole("button", { name: "Import history" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import" })).toBeInTheDocument();
+  });
+
+  it("puts the email history import at the top while it runs", async () => {
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    mocks.importMonths = [];
+    try {
+      render(await AppHome(props()));
+      const panel = screen.getByRole("region", { name: "Email history" });
+      const kpis = screen.getByText("Total", { selector: "dt" });
+      // The panel comes before the KPI cards in the document.
+      expect(panel.compareDocumentPosition(kpis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalledWith("/api/import", expect.anything());
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("sends signed-out visitors to /login", async () => {

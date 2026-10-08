@@ -3,15 +3,16 @@ import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { loadDashboard } from "@/lib/dashboard/load";
 import { resolveCategory } from "@/lib/dashboard/url";
 import { totalsByBank, totalsByCategory } from "@/lib/domain/breakdown";
-import { shiftDay } from "@/lib/domain/day";
-import { shiftMonth } from "@/lib/domain/month";
+import { currentMonth, shiftMonth } from "@/lib/domain/month";
 import { monthOfDay, periodLabel, presetPeriods, resolvePeriod } from "@/lib/domain/period";
 import type { Category } from "@/lib/domain/types";
+import { listImportMonths } from "@/lib/repo/import-months";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_HISTORY_DAYS } from "@/lib/sync/requests";
+import { summarizeImport } from "@/lib/sync/import-progress";
+import { MAX_IMPORT_MONTHS } from "@/lib/sync/import-queue";
 import { BankSummary } from "./bank-summary";
 import { CategoryBars } from "./category-bars";
-import { HistoryImport } from "./history-import";
+import { ImportPanel } from "./import-panel";
 import { KpiCards } from "./kpi-cards";
 import { MonthPicker } from "./month-picker";
 import { MonthlyTrend } from "./monthly-trend";
@@ -42,7 +43,23 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
   const params = await searchParams;
   const period = resolvePeriod(params, now);
   const category = resolveCategory(params.category);
-  const data = await loadDashboard(supabase, user.id, period, now);
+  const [data, importMonths] = await Promise.all([
+    loadDashboard(supabase, user.id, period, now),
+    listImportMonths(supabase, user.id),
+  ]);
+  const importProgress = summarizeImport(importMonths, now);
+  const thisMonth = currentMonth(now);
+  // While months are importing the progress sits at the top; afterwards next to Sync now.
+  const importPanel = (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <ImportPanel
+        initial={importProgress}
+        currentMonth={thisMonth}
+        minMonth={shiftMonth(thisMonth, 1 - MAX_IMPORT_MONTHS)}
+      />
+    </div>
+  );
+  const importing = importProgress.total === 0 || importProgress.active;
   const categories = totalsByCategory(data.transactions, data.usdToDopRate);
   const previousCategories = new Map<Category, number>(
     totalsByCategory(data.previousTransactions, data.usdToDopRate).map((t) => [
@@ -72,6 +89,7 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
           category={category}
         />
       </div>
+      {importing && importPanel}
       <KpiCards data={data} />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-4">
@@ -97,14 +115,8 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
           category={category}
         />
       </div>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <SyncButton />
-        <HistoryImport
-          defaultSince={`${shiftMonth(data.maxMonth, -6)}-01`}
-          minSince={shiftDay(today, 1 - MAX_HISTORY_DAYS)}
-          maxSince={today}
-        />
-      </div>
+      {!importing && importPanel}
+      <SyncButton />
     </>
   );
 }

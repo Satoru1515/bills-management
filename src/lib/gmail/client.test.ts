@@ -134,6 +134,14 @@ describe("gmailSearchDate / withAfter", () => {
     expect(withAfter(` ${query} `, null)).toBe(query);
     expect(withAfter(query)).toBe(query);
   });
+
+  it("appends before: for a window", () => {
+    const query = "from:no-reply@apap.com.do";
+    expect(withAfter(query, "2026-04-30T04:00:00Z", "2026-06-02T04:00:00Z")).toBe(
+      `${query} after:2026/04/30 before:2026/06/02`,
+    );
+    expect(withAfter(query, null, "2026-06-02T04:00:00Z")).toBe(`${query} before:2026/06/02`);
+  });
 });
 
 describe("googleOAuthCredentials", () => {

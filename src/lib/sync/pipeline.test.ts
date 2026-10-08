@@ -647,6 +647,7 @@ describe("Gmail sync, end to end", () => {
       skipped: 0,
       reconnectRequired: 1,
       newTransactions: 9 + 1,
+      importedMonths: 0,
     });
     expect(await ledger(db, ana)).toEqual([
       "bsc-consumo-1 · 2026-10-06T23:18:05-04:00 · Banco Santa Cruz · 9236 · 394 · DOP · SM BRAVO LAS AMERICAS SANTO DOMINGODO · Supermercado",

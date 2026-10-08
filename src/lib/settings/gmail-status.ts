@@ -34,7 +34,8 @@ function plural(count: number, word: string): string {
 /** One line about the latest sync run, or null if none ever started. */
 export function describeRun(run: SyncRunRecord | null): string | null {
   if (!run) return null;
-  const how = run.trigger === "cron" ? "automatic" : "manual";
+  const how =
+    run.trigger === "cron" ? "automatic" : run.trigger === "import" ? "history import" : "manual";
   const when = formatDateTime(run.finishedAt ?? run.startedAt);
   if (run.status === "running") {
     return `${how === "automatic" ? "An" : "A"} ${how} sync started ${when}.`;

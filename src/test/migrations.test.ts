@@ -4,7 +4,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { BANKS, CATEGORIES, CURRENCIES } from "@/lib/domain/types";
 import { createMigratedDb, createUser, migrationFiles } from "./pglite";
 
-const TABLES = ["profiles", "gmail_connections", "transactions", "category_rules", "sync_runs"];
+const TABLES = [
+  "profiles",
+  "gmail_connections",
+  "transactions",
+  "category_rules",
+  "sync_runs",
+  "import_months",
+];
 
 interface TxOverrides {
   gmail_message_id?: string | null;
@@ -249,7 +256,58 @@ describe("category_rules", () => {
   });
 });
 
+describe("import_months", () => {
+  const insert = (month: string, status?: string) =>
+    db.query(
+      status === undefined
+        ? "insert into public.import_months (user_id, month) values ($1, $2)"
+        : "insert into public.import_months (user_id, month, status) values ($1, $2, $3)",
+      status === undefined ? [userId, month] : [userId, month, status],
+    );
+
+  it("starts as a pending month with zero counters", async () => {
+    const result = await db.query<Record<string, unknown>>(
+      `insert into public.import_months (user_id, month) values ($1, '2026-03')
+       returning status, attempts, messages_seen, new_transactions, last_error`,
+      [userId],
+    );
+    expect(result.rows[0]).toEqual({
+      status: "pending",
+      attempts: 0,
+      messages_seen: 0,
+      new_transactions: 0,
+      last_error: null,
+    });
+  });
+
+  it("keeps one row per month per user", async () => {
+    await insert("2026-02");
+    await expect(insert("2026-02")).rejects.toThrow(/duplicate key/);
+  });
+
+  it("rejects malformed months and unknown statuses", async () => {
+    await expect(insert("2026-13")).rejects.toThrow(/check constraint/);
+    await expect(insert("2026-1")).rejects.toThrow(/check constraint/);
+    await expect(insert("2026-01", "queued")).rejects.toThrow(/check constraint/);
+    expect(await allowedValues("import_months", "import_months_status_check")).toEqual([
+      "pending",
+      "running",
+      "done",
+      "error",
+      "failed",
+    ]);
+  });
+});
+
 describe("sync_runs", () => {
+  it("allows the import trigger", async () => {
+    expect(await allowedValues("sync_runs", "sync_runs_trigger_check")).toEqual([
+      "manual",
+      "cron",
+      "import",
+    ]);
+  });
+
   it("starts as a running manual run with zero counters", async () => {
     const result = await db.query<Record<string, unknown>>(
       `insert into public.sync_runs (user_id) values ($1)

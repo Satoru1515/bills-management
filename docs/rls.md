@@ -1,6 +1,6 @@
 # Row Level Security (RLS)
 
-Cada usuario solo ve y edita sus propias filas. Las políticas están en `supabase/migrations/0002_rls_policies.sql` (y `0003_sync_runs_server_only.sql`, que deja `sync_runs` en solo lectura para los usuarios); la RLS se activa en `0001_init.sql`.
+Cada usuario solo ve y edita sus propias filas. Las políticas están en `supabase/migrations/0002_rls_policies.sql` (y `0003_sync_runs_server_only.sql`, que deja `sync_runs` en solo lectura para los usuarios, y `0004_import_queue.sql`, que crea `import_months` igual); la RLS se activa en `0001_init.sql`.
 
 ## Qué puede hacer cada rol
 
@@ -11,6 +11,7 @@ Cada usuario solo ve y edita sus propias filas. Las políticas están en `supaba
 | `transactions` | leer, crear, editar y borrar las suyas | nada | todo |
 | `category_rules` | leer, crear, editar y borrar las suyas | nada | todo |
 | `sync_runs` | solo leer las suyas (las crea y completa el servidor; así nadie puede falsear el historial que usa el límite de «Sync now») | nada | todo |
+| `import_months` | solo leer la suya (la cola de meses de «Email history»; la llena y la trabaja el servidor) | nada | todo |
 
 - Ninguna política permite cambiar `user_id` (o `id` en `profiles`) a otro usuario: el `with check` lo rechaza.
 - El token cifrado de Gmail solo lo lee el servidor con la clave `service_role` (sincronización por cron) y lo descifra con `ENCRYPTION_KEY`. Desde el navegador, `select *` sobre `gmail_connections` da error de permisos: hay que pedir columnas concretas (`email, last_sync_at, …`).

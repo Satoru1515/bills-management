@@ -190,6 +190,7 @@ describe("runSync", () => {
       alreadyStored: 0,
       errors: [],
       reconnectRequired: false,
+      rateLimited: false,
     });
     expect(mem.runs).toEqual([
       {
@@ -226,6 +227,29 @@ describe("runSync", () => {
     expect(result.since).toBe(since);
     expect(result.status).toBe("ok");
     expect(mem.state.lastSyncAt).toBe(STARTED);
+  });
+
+  it("searches a window without moving last_sync_at for the import queue", async () => {
+    const mem = memoryStore({ lastSyncAt: null });
+    const fake = fakeGmail();
+    const calls: unknown[][] = [];
+    const gmail: GmailReader = {
+      listMessages: async (...args) => {
+        calls.push(args);
+        return fake.gmail.listMessages(args[0], args[1]);
+      },
+      getMessage: (id) => fake.gmail.getMessage(id),
+    };
+    const window = { since: "2026-04-30T04:00:00.000Z", until: "2026-06-02T04:00:00.000Z" };
+    const result = await runSync(deps(mem.store, gmail), USER, "import", {
+      ...window,
+      updateLastSync: false,
+    });
+    expect(result.status).toBe("ok");
+    expect(result.since).toBe(window.since);
+    expect(calls[0]).toEqual([expect.any(String), window.since, { before: window.until }]);
+    expect(mem.runs[0]!.trigger).toBe("import");
+    expect(mem.state.lastSyncAt).toBeNull();
   });
 
   it("applies the user's category rules before the defaults", async () => {
@@ -384,6 +408,27 @@ describe("runSync", () => {
           message: "Listing service@intl.paypal.com failed: Gmail API request failed (503)",
         },
       ]);
+      expect(mem.state.lastSyncAt).toBe(LAST_SYNC);
+    });
+
+    it("flags Gmail's per-minute limit so the import queue can wait", async () => {
+      const mem = memoryStore();
+      const fake = fakeGmail();
+      const quota = new GmailError(
+        "Gmail API request failed (403): Quota exceeded for quota metric 'Total Query Cost'",
+        403,
+        "PERMISSION_DENIED",
+      );
+      const gmail: GmailReader = {
+        listMessages: fake.gmail.listMessages,
+        getMessage: async (id) => {
+          if (id.startsWith("apap")) throw quota;
+          return fake.gmail.getMessage(id);
+        },
+      };
+      const result = await runSync(deps(mem.store, gmail), USER, "manual");
+      expect(result.rateLimited).toBe(true);
+      expect(result.errors.length).toBeGreaterThan(0);
       expect(mem.state.lastSyncAt).toBe(LAST_SYNC);
     });
 

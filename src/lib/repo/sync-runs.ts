@@ -5,7 +5,7 @@
 
 import { RepoError, type DbClient } from "./transactions";
 
-export type SyncTrigger = "manual" | "cron";
+export type SyncTrigger = "manual" | "cron" | "import";
 export type SyncRunStatus = "ok" | "error";
 
 /** One problem found during a sync, stored in `sync_runs.errors`. */
@@ -118,7 +118,7 @@ export interface SyncRunRecord {
 }
 
 const RUN_STATUSES: readonly string[] = ["running", "ok", "error"];
-const TRIGGERS: readonly string[] = ["manual", "cron"];
+const TRIGGERS: readonly string[] = ["manual", "cron", "import"];
 
 /** The user's most recent sync (running or finished), or null if none ever started. */
 export async function getLatestSyncRun(

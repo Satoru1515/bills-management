@@ -3,7 +3,14 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { asUser, createMigratedDb, createUser } from "./pglite";
 
-const TABLES = ["profiles", "gmail_connections", "transactions", "category_rules", "sync_runs"];
+const TABLES = [
+  "profiles",
+  "gmail_connections",
+  "transactions",
+  "category_rules",
+  "sync_runs",
+  "import_months",
+];
 
 let db: PGlite;
 let ana: string;
@@ -44,6 +51,7 @@ async function seedUser(email: string, name: string) {
     [id],
   );
   await db.query("insert into public.sync_runs (user_id) values ($1)", [id]);
+  await db.query("insert into public.import_months (user_id, month) values ($1, '2026-05')", [id]);
   return { id, txId: tx.rows[0].id };
 }
 
@@ -331,6 +339,45 @@ describe("sync_runs", () => {
     });
     expect(finished).toBe(2);
     expect(await count(db, "sync_runs", "user_id = $1 and status = 'running'", [ben])).toBe(1);
+  });
+});
+
+describe("import_months", () => {
+  it("a user reads only their own queue", async () => {
+    const rows = await asUser(
+      db,
+      ana,
+      async (tx) =>
+        (await tx.query<{ user_id: string }>("select user_id from public.import_months")).rows,
+    );
+    expect(rows).toEqual([{ user_id: ana }]);
+  });
+
+  // Only the server fills and works the queue.
+  it.each([
+    ["queue", "insert into public.import_months (user_id, month) values ($1, '2026-04')"],
+    ["rewrite", "update public.import_months set status = 'done' where user_id = $1"],
+    ["delete", "delete from public.import_months where user_id = $1"],
+  ])("a user cannot %s months, not even their own", async (_action, sql) => {
+    await expect(asUser(db, ana, (tx) => tx.query(sql, [ana]))).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+
+  it("the service role still queues and completes months", async () => {
+    const done = await db.transaction(async (tx) => {
+      await tx.exec("set local role service_role");
+      await tx.query("insert into public.import_months (user_id, month) values ($1, '2026-04')", [
+        ana,
+      ]);
+      const result = await tx.query(
+        "update public.import_months set status = 'done' where user_id = $1",
+        [ana],
+      );
+      await tx.exec("delete from public.import_months where month = '2026-04'");
+      return result.affectedRows;
+    });
+    expect(done).toBe(2);
   });
 });
 

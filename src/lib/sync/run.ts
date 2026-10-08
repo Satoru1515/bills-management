@@ -14,6 +14,7 @@ import { dedupeScotiabank, type ParsedMessage } from "@/lib/domain/dedupe";
 import {
   GmailError,
   createGmailClient,
+  isRateLimit,
   googleOAuthCredentials,
   type GmailClient,
   type MessageRef,
@@ -115,24 +116,36 @@ export interface SyncDeps {
 }
 
 /** Real dependencies: repositories on the service-role client and the stored Gmail token. */
-export function createSyncDeps(admin: DbClient): SyncDeps {
+export function createSyncDeps(
+  admin: DbClient,
+  gmailOptions: { retryDelaysMs?: readonly number[] } = {},
+): SyncDeps {
   const key = encryptionKey();
   const credentials = googleOAuthCredentials();
   return {
     store: createSyncStore(admin),
     async connectGmail(userId) {
       const refreshToken = await getRefreshToken(admin, userId, key);
-      return refreshToken ? createGmailClient({ credentials, refreshToken }) : null;
+      return refreshToken
+        ? createGmailClient({ credentials, refreshToken, ...gmailOptions })
+        : null;
     },
   };
 }
 
 export interface SyncOptions {
   /**
-   * Search Gmail from this ISO instant instead of from the last sync, to import older emails
-   * ("Import history"). Purchases already stored are skipped as usual.
+   * Search Gmail from this ISO instant instead of from the last sync, to import older emails.
+   * Purchases already stored are skipped as usual.
    */
   since?: string;
+  /** Only messages received before this ISO instant (one month of the import queue). */
+  until?: string;
+  /**
+   * Move `last_sync_at` after a run without errors (default). The import queue turns it off:
+   * a past month says nothing about what arrived since the last regular sync.
+   */
+  updateLastSync?: boolean;
 }
 
 export interface SyncResult extends SyncRunSummary {
@@ -145,6 +158,8 @@ export interface SyncResult extends SyncRunSummary {
   alreadyStored: number;
   /** The user must sign in with Google again (no token, revoked, expired or missing scope). */
   reconnectRequired: boolean;
+  /** Gmail refused requests for going too fast even after retrying; wait about a minute. */
+  rateLimited: boolean;
 }
 
 /** Thrown inside a run when Gmail is not connected for the user. */
@@ -164,6 +179,7 @@ interface RunState {
   alreadyStored: number;
   errors: SyncRunError[];
   droppedErrors: number;
+  rateLimited: boolean;
 }
 
 /**
@@ -193,6 +209,7 @@ export async function runSync(
     alreadyStored: 0,
     errors: [],
     droppedErrors: 0,
+    rateLimited: false,
   };
   let failed = false;
   let reconnectRequired = false;
@@ -232,6 +249,7 @@ export async function runSync(
     duplicates: state.duplicates,
     alreadyStored: state.alreadyStored,
     reconnectRequired,
+    rateLimited: state.rateLimited,
   };
 }
 
@@ -262,7 +280,9 @@ async function syncMessages(
   for (const sender of SENDER_QUERIES) {
     let refs: MessageRef[];
     try {
-      refs = await gmail.listMessages(sender.query, since);
+      refs = options.until
+        ? await gmail.listMessages(sender.query, since, { before: options.until })
+        : await gmail.listMessages(sender.query, since);
     } catch (error) {
       if (isFatal(error)) throw error;
       recordError(state, null, error, `Listing ${sender.address} failed: `);
@@ -275,7 +295,8 @@ async function syncMessages(
   }
   state.messagesSeen = listed.size;
   if (listed.size === 0) {
-    await finishWithoutErrors(store, userId, startedAt, state);
+    if (options.updateLastSync !== false)
+      await finishWithoutErrors(store, userId, startedAt, state);
     return;
   }
 
@@ -316,7 +337,7 @@ async function syncMessages(
     state.newTransactions = inserted.length;
   }
 
-  await finishWithoutErrors(store, userId, startedAt, state);
+  if (options.updateLastSync !== false) await finishWithoutErrors(store, userId, startedAt, state);
 }
 
 /** Moves `last_sync_at` to this run's start, unless something failed along the way. */
@@ -342,6 +363,7 @@ function recordError(
   error: unknown,
   prefix = "",
 ): void {
+  if (error instanceof GmailError && isRateLimit(error)) state.rateLimited = true;
   if (state.errors.length >= MAX_RECORDED_ERRORS) {
     state.droppedErrors += 1;
     return;

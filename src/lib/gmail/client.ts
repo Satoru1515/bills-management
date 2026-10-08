@@ -145,10 +145,16 @@ export function gmailSearchDate(after: Date | string): string {
   return formatDrIso(parts).slice(0, 10).replace(/-/g, "/");
 }
 
-/** Appends `after:YYYY/MM/DD` to a Gmail search query when `after` is given. */
-export function withAfter(query: string, after?: Date | string | null): string {
-  const trimmed = query.trim();
-  return after ? `${trimmed} after:${gmailSearchDate(after)}`.trim() : trimmed;
+/** Appends `after:YYYY/MM/DD` and `before:YYYY/MM/DD` to a Gmail search when given. */
+export function withAfter(
+  query: string,
+  after?: Date | string | null,
+  before?: Date | string | null,
+): string {
+  let q = query.trim();
+  if (after) q = `${q} after:${gmailSearchDate(after)}`;
+  if (before) q = `${q} before:${gmailSearchDate(before)}`;
+  return q.trim();
 }
 
 export interface MessageRef {
@@ -157,11 +163,14 @@ export interface MessageRef {
 }
 
 export interface GmailClient {
-  /** Ids of every message matching `query` (optionally received after `after`), newest first. */
+  /**
+   * Ids of every message matching `query`, newest first, optionally received after `after`
+   * and before `options.before` (whole DR days, see {@link gmailSearchDate}).
+   */
   listMessages(
     query: string,
     after?: Date | string | null,
-    options?: { maxMessages?: number },
+    options?: { maxMessages?: number; before?: Date | string | null },
   ): Promise<MessageRef[]>;
   /** The message with a plain-text body (text/plain preferred, otherwise HTML converted). */
   getMessage(id: string): Promise<RawEmail>;
@@ -174,6 +183,8 @@ export interface GmailClientOptions {
   now?: () => number;
   /** Waits between retries; injectable so tests do not wait. */
   sleep?: (ms: number) => Promise<void>;
+  /** Pauses before each retry; defaults to {@link RETRY_DELAYS_MS}. */
+  retryDelaysMs?: readonly number[];
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -183,8 +194,12 @@ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(r
  * temporarily (500, 502, 503, 504). Those are retried after a pause.
  */
 export function isRetryable(error: GmailError): boolean {
+  return isRateLimit(error) || isServerError(error);
+}
+
+/** Gmail refused the request for going too fast: 429, or a 403 for a rate limit or quota. */
+export function isRateLimit(error: GmailError): boolean {
   if (error.status === 429) return true;
-  if (error.status !== null && [500, 502, 503, 504].includes(error.status)) return true;
   return (
     error.status === 403 &&
     !error.reconnectRequired &&
@@ -192,10 +207,15 @@ export function isRetryable(error: GmailError): boolean {
   );
 }
 
+function isServerError(error: GmailError): boolean {
+  return error.status !== null && [500, 502, 503, 504].includes(error.status);
+}
+
 export function createGmailClient(options: GmailClientOptions): GmailClient {
   const doFetch = options.fetch ?? defaultFetch;
   const now = options.now ?? Date.now;
   const sleep = options.sleep ?? defaultSleep;
+  const retryDelays = options.retryDelaysMs ?? RETRY_DELAYS_MS;
   let cached: AccessToken | null = null;
 
   async function accessToken(forceRefresh: boolean): Promise<string> {
@@ -210,7 +230,7 @@ export function createGmailClient(options: GmailClientOptions): GmailClient {
 
   /**
    * GET on the Gmail API. A 401 refreshes the access token and retries once; rate limits and
-   * temporary server errors are retried after the pauses in {@link RETRY_DELAYS_MS}.
+   * temporary server errors are retried after the configured pauses.
    */
   async function get(path: string, params: Record<string, string> = {}): Promise<unknown> {
     const query = new URLSearchParams(params).toString();
@@ -230,8 +250,8 @@ export function createGmailClient(options: GmailClientOptions): GmailClient {
       const json = await readJson(response);
       if (response.ok) return json;
       const error = apiError(response.status, json);
-      if (!isRetryable(error) || retries >= RETRY_DELAYS_MS.length) throw error;
-      await sleep(RETRY_DELAYS_MS[retries]!);
+      if (!isRetryable(error) || retries >= retryDelays.length) throw error;
+      await sleep(retryDelays[retries]!);
       retries += 1;
     }
   }
@@ -239,7 +259,7 @@ export function createGmailClient(options: GmailClientOptions): GmailClient {
   return {
     async listMessages(query, after, listOptions = {}) {
       const max = listOptions.maxMessages ?? DEFAULT_MAX_MESSAGES;
-      const q = withAfter(query, after);
+      const q = withAfter(query, after, listOptions.before);
       const refs: MessageRef[] = [];
       let pageToken: string | undefined;
       do {

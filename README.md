@@ -103,15 +103,27 @@ Failures throw `GmailError`; `reconnectRequired` is true when the refresh token 
 
 ### Syncing
 
-`runSync(createSyncDeps(createAdminClient()), userId, "manual" | "cron")` (`src/lib/sync/run.ts`) syncs one user:
+`runSync(createSyncDeps(createAdminClient()), userId, "manual" | "cron" | "import")` (`src/lib/sync/run.ts`) syncs one user:
 
 1. Creates a `running` row in `sync_runs`.
-2. Searches each known sender (`SENDER_QUERIES`; PayPal only `subject:receipt`) from a day before `last_sync_at`, or about six months (183 days) back on the first sync. **Import history** on `/app` posts `{ "since": "YYYY-MM-DD" }` to search from that day instead (up to two years back).
+2. Searches each known sender (`SENDER_QUERIES`; PayPal only `subject:receipt`) from a day before `last_sync_at`, or about six months (183 days) back on the first sync. Import queue runs search one month instead (`since` / `until`, Gmail `after:` / `before:`) and leave `last_sync_at` alone.
 3. Skips messages already stored, except Scotiabank ones, which are read again so a later alert for a saved purchase is recognized as a repeat.
 4. Parses, collapses repeated Scotiabank alerts (keeping the stored one if any), categorizes with the user's `category_rules` first, and inserts the new purchases (existing rows are never touched, so edited categories and `ignored` survive).
 5. Completes the `sync_runs` row (`ok` or `error`, counts, up to 50 errors) and moves `last_sync_at` to the run's start only if nothing failed.
 
-Expected failures are returned, not thrown; `reconnectRequired` tells the UI to ask for a new Google sign-in.
+Expected failures are returned, not thrown; `reconnectRequired` tells the UI to ask for a new Google sign-in, and `rateLimited` says Gmail refused requests for going too fast.
+
+The Gmail client (`src/lib/gmail/client.ts`) retries requests that Gmail refuses for its per-user quota (`429`, or `403` "Quota exceeded … per minute per user") or that fail on Google's side (`5xx`) after 2, 4, 8, 16 and 32 seconds, and messages are fetched 3 at a time.
+
+### Email history (import queue)
+
+Reading months of Gmail at once trips Gmail's per-minute quota and the function time limit, so older mail is imported as a queue of months (`public.import_months`, migration `0004_import_queue.sql`; logic in `src/lib/sync/import-queue.ts`):
+
+- The first time the dashboard opens, the last six months (the current one included) are queued. **Import more months, from** queues more, up to 24 months back, after a notice with the estimated time (about 1.5 minutes per month, `estimateImportMs`).
+- Each step (`POST /api/import`, optionally with `{ "from": "YYYY-MM" }`) runs the newest due month through the same pipeline as Sync now, limited to that month, for up to about 20 seconds. The dashboard calls it again and again while months are left and shows a progress bar (`src/app/app/import-panel.tsx`); it sits at the top of `/app` while importing and next to Sync now afterwards.
+- When Gmail's per-minute quota is hit, the month goes back to `pending` without counting an attempt and the queue waits 65 seconds (the panel shows a countdown). Other failures are retried after 1, 5, 15 and 60 minutes; after 5 attempts the month is `failed` (**Retry them** queues it again). An expired Google grant pauses the queue until the user reconnects.
+- Only one month runs at a time per user (the claim is a conditional update, and a running sync makes the step answer `busy`); a month left `running` by a cut-off request is taken again after 10 minutes. The scheduled sync also runs about 10 seconds of each user's queue, so it advances with the page closed.
+- Users can read their queue but only the server writes it (like `sync_runs`).
 
 Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
 
