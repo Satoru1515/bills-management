@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { loginErrorMessage, safeNextPath } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
-import { signInWithGoogleAction } from "./actions";
+import { GoogleSignInForm } from "./google-sign-in-form";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </p>
       )}
 
-      <form action={signInWithGoogleAction}>
+      <GoogleSignInForm>
         <input type="hidden" name="next" value={next} />
         <button
           type="submit"
@@ -43,7 +43,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         >
           Continue with Google
         </button>
-      </form>
+      </GoogleSignInForm>
 
       <p className="text-xs opacity-70">
         The app asks for read-only access to Gmail and only reads alerts from Scotiabank, APAP,

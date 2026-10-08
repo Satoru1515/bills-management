@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { APP_NAME, APP_SHORT_NAME, THEME_COLORS } from "@/lib/pwa/manifest";
 import "./globals.css";
+import { NativeAuthListener } from "./native-auth-listener";
 import { ServiceWorker } from "./service-worker";
 
 const geistSans = Geist({
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <ServiceWorker />
+        <NativeAuthListener />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signInWithGoogleAction } from "@/app/login/actions";
+import { GoogleSignInForm } from "@/app/login/google-sign-in-form";
 import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { DASHBOARD_PATH, SETTINGS_PATH } from "@/lib/dashboard/url";
 import { getGmailConnectionStatus } from "@/lib/repo/gmail-connections";
@@ -85,7 +85,7 @@ export default async function SettingsPage() {
           )}
         </dl>
         {lastRun && <p className="text-xs text-muted tabular-nums">{lastRun}</p>}
-        <form action={signInWithGoogleAction} className="flex flex-col items-start gap-1">
+        <GoogleSignInForm className="flex flex-col items-start gap-1">
           <input type="hidden" name="next" value={SETTINGS_PATH} />
           <button
             type="submit"
@@ -100,7 +100,7 @@ export default async function SettingsPage() {
           <span className="text-xs text-muted">
             Signs in with Google again and asks for read-only Gmail access.
           </span>
-        </form>
+        </GoogleSignInForm>
       </section>
     </>
   );

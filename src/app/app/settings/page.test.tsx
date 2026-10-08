@@ -29,7 +29,10 @@ vi.mock("@/lib/repo/gmail-connections", () => ({
   getGmailConnectionStatus: mocks.getGmailConnectionStatus,
 }));
 vi.mock("@/lib/repo/sync-runs", () => ({ getLatestSyncRun: mocks.getLatestSyncRun }));
-vi.mock("@/app/login/actions", () => ({ signInWithGoogleAction: vi.fn() }));
+vi.mock("@/app/login/actions", () => ({
+  signInWithGoogleAction: vi.fn(),
+  startNativeGoogleSignInAction: vi.fn(),
+}));
 vi.mock("./actions", () => ({ saveRateAction: vi.fn() }));
 
 import { GOOGLE_GRANTED_SCOPES } from "@/lib/auth/google";

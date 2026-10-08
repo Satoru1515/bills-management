@@ -97,6 +97,7 @@ Never commit the secret. `.env.local` and `supabase/.env` are git-ignored.
 2. **Authentication > URL Configuration**:
    - **Site URL**: the production URL of the app (or `http://localhost:3000` while you only run locally).
    - **Redirect URLs**: add `<app url>/auth/callback` for every origin the app runs on, e.g. `http://localhost:3000/auth/callback` and `https://bills-yourname.vercel.app/auth/callback`. Without this, Supabase ignores the app's `redirectTo` and sends users to the Site URL.
+   - For the Android app, also add `com.satoru1515.bills://auth/callback` (see [android.md](android.md#4-google-sign-in-in-the-app)).
 
 **Local Supabase stack**
 
@@ -134,6 +135,6 @@ Fill `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env.local` (see `.env.ex
 | Sync fails with `403 accessNotConfigured` | The Gmail API is not enabled (step 2). |
 | Sync fails with `403 insufficientPermissions` | The Gmail checkbox was left unticked on the consent screen. Remove the app at <https://myaccount.google.com/permissions> and sign in again, ticking it. |
 
-## Later: mobile (Capacitor)
+## Mobile (Capacitor)
 
-The Android app (Fase 6) opens Google sign-in in the system browser and comes back through a deep link handled by Supabase, so it reuses this same Web application client and the same Supabase callback. Only the Supabase Redirect URLs list will need the app's deep link added; that is documented in Fase 6.
+The Android app opens Google sign-in in the system browser and comes back through the deep link `com.satoru1515.bills://auth/callback`, so it reuses this same Web application client and the same Supabase callback. Nothing changes in Google Cloud; only Supabase's Redirect URLs need the deep link (step 7). Details in [android.md](android.md#4-google-sign-in-in-the-app).

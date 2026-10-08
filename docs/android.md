@@ -12,7 +12,7 @@ The Android app is a thin [Capacitor](https://capacitorjs.com/) shell around the
 
 > **The app ID cannot change once the app is published on Google Play.** To use another one, change `appId` in `capacitor.config.ts`, then `namespace` and `applicationId` in `android/app/build.gradle` and the package of `MainActivity.java` (and its folder) before the first release.
 
-> **Google sign-in does not work inside the app yet.** Google blocks OAuth in embedded WebViews (`403 disallowed_useragent`). The next task of the plan opens the sign-in in the system browser and returns to the app through a deep link. Until then the app shows the login page but cannot finish signing in.
+> **Google sign-in in the app needs one Supabase setting:** add `com.satoru1515.bills://auth/callback` to Supabase's Redirect URLs (see [Google sign-in in the app](#4-google-sign-in-in-the-app)). Without it, sign-in in the app ends on the website in the browser instead of coming back to the app.
 
 ## Requirements
 
@@ -74,6 +74,54 @@ Or press **Run** in Android Studio. A debug APK is signed with a local debug key
 3. The APK is at `android/app/release/app-release.apk`.
 
 `*.jks` and `*.keystore` are git-ignored; never commit them or their passwords.
+
+## 4. Google sign-in in the app
+
+Google refuses sign-in inside embedded WebViews (`403 disallowed_useragent`), so in the app **Continue with Google** (and **Reconnect Gmail** in Settings) opens Google's consent screen in the system browser (a Chrome Custom Tab, via `@capacitor/browser`). When you accept, Supabase sends the browser to the app's deep link `com.satoru1515.bills://auth/callback?code=…`, Android brings the app back to the front, and the app finishes signing in on its own.
+
+**One-time setup** in the Supabase dashboard: **Authentication → URL Configuration → Redirect URLs → Add URL** and add exactly:
+
+```
+com.satoru1515.bills://auth/callback
+```
+
+The local Supabase stack already allows it (`additional_redirect_urls` in `supabase/config.toml`). Nothing changes in Google Cloud: Google still only redirects to Supabase's `/auth/v1/callback` (see [google-cloud-setup.md](google-cloud-setup.md)). The deep link carries no query string, so it matches that entry exactly; the page to open afterwards (for example Settings after **Reconnect Gmail**) is remembered inside the app.
+
+How it works, step by step:
+
+```
+App WebView    tap "Continue with Google"
+  │            server action startNativeGoogleSignInAction: Supabase signInWithOAuth with
+  │            redirectTo = com.satoru1515.bills://auth/callback; the PKCE code verifier
+  │            cookie is stored in the app's WebView
+  ▼
+Custom Tab     Supabase → Google consent → <supabase>/auth/v1/callback
+  │            → com.satoru1515.bills://auth/callback?code=…
+  ▼
+App            Android opens the app (intent filter in AndroidManifest.xml); the
+  │            appUrlOpen event (@capacitor/app) reaches NativeAuthListener
+  ▼
+App WebView    server action finishNativeGoogleSignInAction: exchanges the code with
+               the verifier (sets the session cookies), stores the encrypted Gmail
+               refresh token, then opens /app (or the remembered page)
+```
+
+- **Security:** another app could register the same URL scheme and receive the deep link, but the code is useless without the PKCE verifier, which only lives in this app's WebView. The deep link only ever carries a one-time code, never a token. Verified [Android App Links](https://developer.android.com/training/app-links) (an `https` link plus `/.well-known/assetlinks.json` on the domain) would be stronger and can replace the custom scheme once the app has its final domain.
+- **Why a server action and not `/auth/callback`:** Capacitor loads the app's HTML pages itself (to inject its bridge) and follows redirects internally, so cookies set on a redirect response such as `/auth/callback`'s would be lost. Server actions are `POST` requests, which the WebView sends normally.
+- **If the app was closed by Android** while the browser was open, the deep link starts it again and the sign-in still finishes (`App.getLaunchUrl()`); it then opens `/app`. Each deep link is handled once.
+- **Cancelling:** closing the Custom Tab leaves you on the login page; tapping **Cancel** on Google's screen shows "Google sign-in was cancelled".
+- After adding or updating Capacitor plugins, run `npm run android:sync` and rebuild the APK.
+
+Code: `src/lib/auth/native.ts` (deep link parsing and handling, tested in `native.test.ts`), `src/app/login/google-sign-in-form.tsx` (opens the browser in the app, posts the normal form on the web), `src/app/native-auth-listener.tsx` (in the root layout), the two server actions in `src/app/login/actions.ts`, and the intent filter in `android/app/src/main/AndroidManifest.xml`.
+
+**Troubleshooting**
+
+| Symptom | Cause |
+| --- | --- |
+| After Google, the browser shows the website instead of returning to the app | The deep link is not in Supabase's Redirect URLs, so Supabase used the Site URL. |
+| The browser says it cannot open the link / nothing happens after Google | The installed APK is older than the intent filter: rebuild and reinstall it. |
+| Back in the app, "The sign-in could not be completed" | The code was already used, or the app's cookies were cleared between starting and finishing; sign in again. |
+| `403 disallowed_useragent` | The app is older than this flow (it opened Google inside the WebView); update the APK and the site. |
 
 ## How it fits together
 

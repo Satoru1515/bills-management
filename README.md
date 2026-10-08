@@ -143,7 +143,7 @@ The app is installable from the browser (Chrome/Edge: **Install app** in the add
 
 ### Android app
 
-`android/` is a [Capacitor](https://capacitorjs.com/) project whose WebView opens the deployed site (`CAP_SERVER_URL`, read by `capacitor.config.ts` at `npm run android:sync`), so the app runs the same code as the website. Building the APK, signing a release and the app ID are covered in [`docs/android.md`](docs/android.md). Google sign-in inside the app is not wired up yet (Google blocks OAuth in WebViews); it is the next task of the plan.
+`android/` is a [Capacitor](https://capacitorjs.com/) project whose WebView opens the deployed site (`CAP_SERVER_URL`, read by `capacitor.config.ts` at `npm run android:sync`), so the app runs the same code as the website. Building the APK, signing a release and the app ID are covered in [`docs/android.md`](docs/android.md). Google sign-in inside the app opens in the system browser and comes back through the deep link `com.satoru1515.bills://auth/callback`, which must be added to Supabase's Redirect URLs ([details](docs/android.md#4-google-sign-in-in-the-app)).
 
 ## Environment variables
 

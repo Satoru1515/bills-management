@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
   signInWithOAuth: vi.fn(),
   origin: "http://localhost:3000" as string | null,
+  exchangeCode: vi.fn(),
+  storeToken: vi.fn(),
 }));
 
 class RedirectError extends Error {
@@ -30,7 +32,18 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
-import { signInWithGoogleAction } from "./actions";
+vi.mock("@/lib/auth/callback-deps", () => ({
+  authCallbackDeps: vi.fn(() => ({
+    exchangeCode: mocks.exchangeCode,
+    storeToken: mocks.storeToken,
+  })),
+}));
+
+import {
+  finishNativeGoogleSignInAction,
+  signInWithGoogleAction,
+  startNativeGoogleSignInAction,
+} from "./actions";
 import LoginPage from "./page";
 
 function params(values: Record<string, string | string[]> = {}) {
@@ -61,6 +74,11 @@ beforeEach(() => {
     data: { url: "https://accounts.google.com/o/oauth2/v2/auth?x=1" },
     error: null,
   });
+  mocks.exchangeCode.mockResolvedValue({
+    session: { provider_refresh_token: "r", user: { id: "u1", email: "satoru@example.com" } },
+    error: null,
+  });
+  mocks.storeToken.mockResolvedValue("stored");
 });
 
 describe("LoginPage", () => {
@@ -137,5 +155,68 @@ describe("signInWithGoogleAction", () => {
     await expect(redirectOf(signInWithGoogleAction(form({ next: "/app/x" })))).resolves.toBe(
       "/login?next=%2Fapp%2Fx&error=oauth_failed",
     );
+  });
+});
+
+describe("startNativeGoogleSignInAction", () => {
+  it("returns the consent URL with the app's deep link as the callback", async () => {
+    await expect(startNativeGoogleSignInAction()).resolves.toEqual({
+      ok: true,
+      url: "https://accounts.google.com/o/oauth2/v2/auth?x=1",
+    });
+    expect(mocks.signInWithOAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "google",
+        options: expect.objectContaining({
+          redirectTo: "com.satoru1515.bills://auth/callback",
+        }),
+      }),
+    );
+  });
+
+  it("returns an error message when Supabase refuses", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: { message: "off" } });
+    await expect(startNativeGoogleSignInAction()).resolves.toEqual({
+      ok: false,
+      error: "Google sign-in could not start. Please try again.",
+    });
+  });
+});
+
+describe("finishNativeGoogleSignInAction", () => {
+  it("exchanges the code, stores the Gmail token and returns the next page", async () => {
+    await expect(
+      finishNativeGoogleSignInAction({ code: "abc", error: null }, "/app/settings"),
+    ).resolves.toBe("/app/settings");
+    expect(mocks.exchangeCode).toHaveBeenCalledWith("abc");
+    expect(mocks.storeToken).toHaveBeenCalledOnce();
+  });
+
+  it("returns the login error page when the user cancelled", async () => {
+    await expect(
+      finishNativeGoogleSignInAction({ code: null, error: "access_denied" }, "/app"),
+    ).resolves.toBe("/login?error=access_denied");
+    expect(mocks.exchangeCode).not.toHaveBeenCalled();
+  });
+
+  it("returns the login error page when the exchange fails", async () => {
+    mocks.exchangeCode.mockResolvedValue({ session: null, error: { message: "bad verifier" } });
+    await expect(finishNativeGoogleSignInAction({ code: "abc" }, "/app/settings")).resolves.toBe(
+      "/login?next=%2Fapp%2Fsettings&error=exchange_failed",
+    );
+  });
+
+  it("accepts only short strings from the browser", async () => {
+    const values: unknown[] = [42, { a: 1 }, "", "x".repeat(2049), null, undefined];
+    for (const code of values) {
+      await expect(finishNativeGoogleSignInAction({ code }, 7)).resolves.toBe(
+        "/login?error=missing_code",
+      );
+    }
+    await expect(
+      finishNativeGoogleSignInAction(null as unknown as { code: unknown }, "//evil.com"),
+    ).resolves.toBe("/login?error=missing_code");
+    expect(mocks.exchangeCode).not.toHaveBeenCalled();
   });
 });
