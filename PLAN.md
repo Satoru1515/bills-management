@@ -71,7 +71,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 
 - [x] `docs/deploy.md`: Vercel + Supabase, variables de entorno, cron, dominio.
 - [x] Checklist de seguridad: tokens cifrados, RLS activa, secretos fuera del repo, rate limit en `/api/sync`.
-- [ ] Cerrar fase: PR. Proyecto listo para uso personal.
+- [x] Cerrar fase: PR. Proyecto listo para uso personal.
 
 ## Ideas para después (no tocar sin aprobación)
 
