@@ -106,7 +106,7 @@ Failures throw `GmailError`; `reconnectRequired` is true when the refresh token 
 `runSync(createSyncDeps(createAdminClient()), userId, "manual" | "cron")` (`src/lib/sync/run.ts`) syncs one user:
 
 1. Creates a `running` row in `sync_runs`.
-2. Searches each known sender (`SENDER_QUERIES`; PayPal only `subject:receipt`) from a day before `last_sync_at`, or 90 days back on the first sync.
+2. Searches each known sender (`SENDER_QUERIES`; PayPal only `subject:receipt`) from a day before `last_sync_at`, or about six months (183 days) back on the first sync. **Import history** on `/app` posts `{ "since": "YYYY-MM-DD" }` to search from that day instead (up to two years back).
 3. Skips messages already stored, except Scotiabank ones, which are read again so a later alert for a saved purchase is recognized as a repeat.
 4. Parses, collapses repeated Scotiabank alerts (keeping the stored one if any), categorizes with the user's `category_rules` first, and inserts the new purchases (existing rows are never touched, so edited categories and `ignored` survive).
 5. Completes the `sync_runs` row (`ok` or `error`, counts, up to 50 errors) and moves `last_sync_at` to the run's start only if nothing failed.

@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  MAX_HISTORY_DAYS,
   RUNNING_SYNC_WINDOW_MS,
   handleCronSync,
   handleManualSync,
+  historyStart,
   isCronAuthorized,
   isSameOrigin,
   runCronSync,
@@ -91,6 +93,22 @@ describe("isSameOrigin", () => {
   });
 });
 
+describe("historyStart", () => {
+  it("starts at midnight DR time of the chosen day", () => {
+    expect(historyStart("2026-04-01", NOW)).toBe("2026-04-01T04:00:00.000Z");
+    expect(historyStart("2026-10-07", NOW)).toBe("2026-10-07T04:00:00.000Z");
+  });
+
+  it("refuses malformed, unreal, future and too old days", () => {
+    for (const value of [undefined, null, 20260401, "", "2026-4-01", "2026-02-30", "garbage"]) {
+      expect(historyStart(value, NOW)).toBeNull();
+    }
+    expect(historyStart("2026-10-08", NOW)).toBeNull();
+    expect(historyStart("2024-10-01", NOW)).toBeNull();
+    expect(MAX_HISTORY_DAYS).toBe(730);
+  });
+});
+
 describe("handleManualSync", () => {
   it("syncs the signed-in user and returns the outcome", async () => {
     const deps = manualDeps();
@@ -100,6 +118,21 @@ describe("handleManualSync", () => {
     expect(deps.isSyncRunning).toHaveBeenCalledWith(USER, "2026-10-07T15:50:00.000Z");
     expect(deps.listManualSyncStarts).toHaveBeenCalledWith(USER, "2026-10-07T15:00:00.000Z");
     expect(deps.runSync).toHaveBeenCalledWith(USER);
+  });
+
+  it("imports history from the requested day", async () => {
+    const deps = manualDeps();
+    const response = await handleManualSync({ ...SAME_SITE, since: "2026-04-01" }, deps);
+    expect(response.status).toBe(200);
+    expect(deps.runSync).toHaveBeenCalledWith(USER, { since: "2026-04-01T04:00:00.000Z" });
+  });
+
+  it("refuses an invalid history start before reading the session", async () => {
+    const deps = manualDeps();
+    const response = await handleManualSync({ ...SAME_SITE, since: "2030-01-01" }, deps);
+    expect(response).toEqual({ status: 400, body: { error: "invalid_since" } });
+    expect(deps.getUserId).not.toHaveBeenCalled();
+    expect(deps.runSync).not.toHaveBeenCalled();
   });
 
   it("returns a run that ended in error as a 200 with its status", async () => {

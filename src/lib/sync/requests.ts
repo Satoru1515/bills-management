@@ -7,15 +7,33 @@
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
+import { isDay } from "@/lib/domain/day";
 import type { SyncErrorBody, SyncResponseBody } from "./feedback";
 import { manualSyncRetryAfter, manualSyncWindowStart } from "./rate-limit";
-import type { SyncResult } from "./run";
+import type { SyncOptions, SyncResult } from "./run";
 
 /**
  * A `running` sync younger than this blocks a new one for the same user. Older ones were cut
  * off (the functions time out well before this) and no longer count.
  */
 export const RUNNING_SYNC_WINDOW_MS = 10 * 60 * 1000;
+
+/** "Import history" may reach this many days back, so one run stays within the time limit. */
+export const MAX_HISTORY_DAYS = 730;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The start of an "Import history" sync for a `YYYY-MM-DD` day (midnight, DR time), as an ISO
+ * instant. Null when the value is not a real date, is in the future or is more than
+ * {@link MAX_HISTORY_DAYS} days back.
+ */
+export function historyStart(value: unknown, now: Date): string | null {
+  if (typeof value !== "string" || !isDay(value)) return null;
+  const start = Date.parse(`${value}T00:00:00-04:00`);
+  if (start > now.getTime() || now.getTime() - start > MAX_HISTORY_DAYS * DAY_MS) return null;
+  return new Date(start).toISOString();
+}
 
 export interface JsonResponse<T = unknown> {
   status: number;
@@ -61,6 +79,8 @@ export interface ManualSyncRequest {
   /** The request's `Origin` header. */
   origin: string | null;
   url: string;
+  /** `since` from the JSON body (`YYYY-MM-DD`) for "Import history"; absent for "Sync now". */
+  since?: unknown;
 }
 
 export interface ManualSyncDeps {
@@ -69,7 +89,7 @@ export interface ManualSyncDeps {
   isSyncRunning(userId: string, since: string): Promise<boolean>;
   /** Start times of the user's manual syncs that started at or after `since`. */
   listManualSyncStarts(userId: string, since: string): Promise<string[]>;
-  runSync(userId: string): Promise<SyncResult>;
+  runSync(userId: string, options?: SyncOptions): Promise<SyncResult>;
   now?: () => Date;
   log?: (message: string) => void;
 }
@@ -77,6 +97,7 @@ export interface ManualSyncDeps {
 /**
  * `POST /api/sync`: syncs the signed-in user's Gmail now. One sync at a time per user, and
  * at most as often as the rate limit in ./rate-limit.ts allows (`429` with `Retry-After`).
+ * With `since` it imports older emails from that day on (`400 invalid_since` if not allowed).
  */
 export async function handleManualSync(
   request: ManualSyncRequest,
@@ -87,6 +108,12 @@ export async function handleManualSync(
   const fail = (status: number, error: SyncErrorBody["error"]) => ({ status, body: { error } });
 
   if (!isSameOrigin(request.origin, request.url)) return fail(403, "forbidden");
+  let options: SyncOptions = {};
+  if (request.since !== undefined && request.since !== null) {
+    const since = historyStart(request.since, now());
+    if (since === null) return fail(400, "invalid_since");
+    options = { since };
+  }
 
   try {
     const userId = await deps.getUserId();
@@ -103,7 +130,7 @@ export async function handleManualSync(
         headers: { "Retry-After": String(retryAfterSeconds) },
       };
     }
-    const result = await deps.runSync(userId);
+    const result = options.since ? await deps.runSync(userId, options) : await deps.runSync(userId);
     return { status: 200, body: toResponseBody(result) };
   } catch (error) {
     log(`manual sync failed: ${errorMessage(error)}`);

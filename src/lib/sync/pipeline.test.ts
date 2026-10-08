@@ -74,11 +74,11 @@ function header(message: GmailMessage, name: string): string {
 
 const [dupCnp, dupUse, dupAbroad] = scotiabank.repeatedPurchase;
 
-/** A Scotiabank alert from June: older than the first sync's 90-day lookback. */
+/** A Scotiabank alert from March: older than the first sync's six-month lookback. */
 const oldAlert: RawEmail = {
   ...scotiabank.creditCardUse,
   id: "sc-old-1",
-  date: "2026-06-01T23:35:41.000Z",
+  date: "2026-03-01T23:35:41.000Z",
 };
 
 /** Satoru's mailbox: purchases, repeats and non-purchases from the four senders. */
@@ -441,25 +441,25 @@ const FIRST_SYNC_LEDGER = [
 ];
 
 describe("Gmail sync, end to end", () => {
-  it("first sync: reads 90 days from every sender and stores each purchase once", async () => {
+  it("first sync: reads six months from every sender and stores each purchase once", async () => {
     const result = await syncAt(RUN_1);
 
     expect(result).toMatchObject({
       status: "ok",
-      since: "2026-07-08T22:14:50.000Z",
+      since: "2026-04-06T22:14:50.000Z",
       newTransactions: 6,
       duplicates: 0,
       alreadyStored: 0,
       errors: [],
       reconnectRequired: false,
     });
-    // Searches carry the DR date; PayPal only receipts; the June alert is out of range.
+    // Searches carry the DR date; PayPal only receipts; the March alert is out of range.
     expect(new Set(google.listCalls.map((c) => c.q))).toEqual(
       new Set([
-        "from:alertas@scotiabank.com after:2026/07/08",
-        "from:no-reply@apap.com.do after:2026/07/08",
-        "from:notificaciones@bsc.com.do after:2026/07/08",
-        "from:service@intl.paypal.com subject:receipt after:2026/07/08",
+        "from:alertas@scotiabank.com after:2026/04/06",
+        "from:no-reply@apap.com.do after:2026/04/06",
+        "from:notificaciones@bsc.com.do after:2026/04/06",
+        "from:service@intl.paypal.com subject:receipt after:2026/04/06",
       ]),
     );
     expect(google.listCalls.some((c) => c.pageToken !== null)).toBe(true);

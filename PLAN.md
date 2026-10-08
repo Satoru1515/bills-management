@@ -73,6 +73,16 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Checklist de seguridad: tokens cifrados, RLS activa, secretos fuera del repo, rate limit en `/api/sync`.
 - [x] Cerrar fase: PR. Proyecto listo para uso personal.
 
+## Fase 8 — History, date ranges and month comparison  (rama `fase/8-history`)
+
+Requested by Satoru on 2026-10-08 after the first local run.
+
+- [x] Load at least six months: first sync looks back 183 days, and **Import history** on `/app` syncs from a chosen day (up to two years back) via `POST /api/sync` with `{ since }`.
+- [ ] Custom date range on the dashboard (`?from=YYYY-MM-DD&to=YYYY-MM-DD`) with presets (last 3 / 6 months, this year), compared against the previous period of the same length.
+- [ ] Green / red comparisons: change vs the previous period on the KPI cards and per category, and a monthly trend of the last six months with each month's change.
+- [ ] USD→DOP rate for a specific date from a free API (fawazahmed0 currency-api), offered in Settings to fill the rate.
+- [ ] Cerrar fase: PR.
+
 ## Ideas para después (no tocar sin aprobación)
 
 - Gmail Push (Pub/Sub) en lugar de polling.

@@ -218,6 +218,16 @@ describe("runSync", () => {
     expect(mem.state.lastSyncAt).toBe(STARTED);
   });
 
+  it("searches from options.since when importing history", async () => {
+    const mem = memoryStore();
+    const fake = fakeGmail();
+    const since = "2026-04-01T04:00:00.000Z";
+    const result = await runSync(deps(mem.store, fake.gmail), USER, "manual", { since });
+    expect(result.since).toBe(since);
+    expect(result.status).toBe("ok");
+    expect(mem.state.lastSyncAt).toBe(STARTED);
+  });
+
   it("applies the user's category rules before the defaults", async () => {
     const mem = memoryStore();
     mem.state.rules = [

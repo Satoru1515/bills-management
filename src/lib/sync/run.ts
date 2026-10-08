@@ -38,8 +38,8 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** How far back the first sync of a user searches. */
-export const INITIAL_LOOKBACK_DAYS = 90;
+/** How far back the first sync of a user searches (about six months). */
+export const INITIAL_LOOKBACK_DAYS = 183;
 /** Later syncs search from this long before the last one started (docs/parsing-spec.md §6). */
 export const SEARCH_OVERLAP_MS = DAY_MS;
 /** Gmail messages fetched in parallel. */
@@ -127,6 +127,14 @@ export function createSyncDeps(admin: DbClient): SyncDeps {
   };
 }
 
+export interface SyncOptions {
+  /**
+   * Search Gmail from this ISO instant instead of from the last sync, to import older emails
+   * ("Import history"). Purchases already stored are skipped as usual.
+   */
+  since?: string;
+}
+
 export interface SyncResult extends SyncRunSummary {
   runId: string;
   /** Start of the Gmail search window, or null if the run stopped before searching. */
@@ -169,6 +177,7 @@ export async function runSync(
   deps: SyncDeps,
   userId: string,
   trigger: SyncTrigger,
+  options: SyncOptions = {},
 ): Promise<SyncResult> {
   const now = deps.now ?? (() => new Date());
   const { store } = deps;
@@ -189,7 +198,7 @@ export async function runSync(
   let reconnectRequired = false;
 
   try {
-    await syncMessages(deps, userId, startedAt, state);
+    await syncMessages(deps, userId, startedAt, state, options);
   } catch (error) {
     failed = true;
     reconnectRequired =
@@ -236,6 +245,7 @@ async function syncMessages(
   userId: string,
   startedAt: string,
   state: RunState,
+  options: SyncOptions,
 ): Promise<void> {
   const { store } = deps;
   const lastSyncAt = await store.getLastSyncAt(userId);
@@ -244,7 +254,7 @@ async function syncMessages(
   if (!gmail) throw new NotConnectedError();
 
   const categorize = createCategorizer(withUserRules(await store.listCategoryRules(userId)));
-  const since = searchSince(lastSyncAt, startedAt);
+  const since = options.since ?? searchSince(lastSyncAt, startedAt);
   state.since = since;
 
   // 1. List every message from the known senders since the last sync.

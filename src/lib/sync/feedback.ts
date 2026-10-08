@@ -19,7 +19,12 @@ export interface SyncResponseBody {
 
 /** Error codes in the body of a non-200 response: `{ error: SyncErrorCode }`. */
 export type SyncErrorCode =
-  "forbidden" | "unauthorized" | "sync_in_progress" | "rate_limited" | "sync_failed";
+  | "forbidden"
+  | "unauthorized"
+  | "invalid_since"
+  | "sync_in_progress"
+  | "rate_limited"
+  | "sync_failed";
 
 /** Body of a non-200 response. A `429` also says how long to wait. */
 export interface SyncErrorBody {
@@ -38,6 +43,9 @@ const RETRY_LATER = "The sync failed. Please try again later.";
 /** What to tell the user after `POST /api/sync` answered with `status` and `body`. */
 export function syncFeedback(status: number, body: unknown): SyncFeedback {
   if (status === 401) return error("Your session has ended. Sign in again.");
+  if (status === 400) {
+    return error("Pick a start date in the past, at most two years ago.");
+  }
   if (status === 409) return error("A sync is already running. Try again in a minute.");
   if (status === 429) return error(rateLimitedMessage(body));
   if (status !== 200 || !isSyncResponseBody(body)) return error(RETRY_LATER);

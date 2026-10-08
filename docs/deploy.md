@@ -209,7 +209,7 @@ Go through the deploy-time items (🔧) of the [security checklist](security.md)
 
 1. Open `https://<your domain>/app`: you are sent to `/login`.
 2. **Continue with Google** with an account on the Google test user list. Allow Gmail access on the consent screen.
-3. You land on `/app`. Press **Sync now**: the first sync reads up to 90 days of bank alerts.
+3. You land on `/app`. Press **Sync now**: the first sync reads about six months of bank alerts. To go further back, use **Import history** below it.
 4. **Settings** (`/app/settings`): Gmail shows **Connected** with the last sync time. Set the USD → DOP rate (the app uses 63 until you do).
 5. Supabase **Table Editor**: `gmail_connections` has your row with `refresh_token_encrypted` starting with `v1.`, `transactions` has rows, and `sync_runs` has an `ok` run.
 6. After the next scheduled time (step 6), `sync_runs` gets a row with trigger `cron`.

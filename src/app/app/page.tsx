@@ -3,10 +3,13 @@ import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { loadDashboard } from "@/lib/dashboard/load";
 import { resolveCategory } from "@/lib/dashboard/url";
 import { totalsByBank, totalsByCategory } from "@/lib/domain/breakdown";
-import { formatMonthLabel, resolveMonth } from "@/lib/domain/month";
+import { currentDay, shiftDay } from "@/lib/domain/day";
+import { currentMonth, formatMonthLabel, resolveMonth, shiftMonth } from "@/lib/domain/month";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_HISTORY_DAYS } from "@/lib/sync/requests";
 import { BankSummary } from "./bank-summary";
 import { CategoryBars } from "./category-bars";
+import { HistoryImport } from "./history-import";
 import { KpiCards } from "./kpi-cards";
 import { MonthPicker } from "./month-picker";
 import { SyncButton } from "./sync-button";
@@ -37,6 +40,7 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
   const data = await loadDashboard(supabase, user.id, month, now);
   const categories = totalsByCategory(data.transactions, data.usdToDopRate);
   const banks = totalsByBank(data.transactions, data.usdToDopRate, category);
+  const today = currentDay(now);
 
   return (
     <>
@@ -61,7 +65,14 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
           category={category}
         />
       </div>
-      <SyncButton />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <SyncButton />
+        <HistoryImport
+          defaultSince={`${shiftMonth(currentMonth(now), -6)}-01`}
+          minSince={shiftDay(today, 1 - MAX_HISTORY_DAYS)}
+          maxSince={today}
+        />
+      </div>
     </>
   );
 }
