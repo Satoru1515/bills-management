@@ -119,6 +119,10 @@ describe("/app page", () => {
     const banks = screen.getByRole("region", { name: /By bank and card/ });
     expect(banks).toHaveTextContent("Scotiabank");
     expect(banks).not.toHaveTextContent("APAP");
+    const table = screen.getByRole("region", { name: "Transactions" });
+    expect(table).toHaveTextContent("BRAVO");
+    expect(table).not.toHaveTextContent("SHELL");
+    expect(screen.getByLabelText("Category")).toHaveValue("Supermercado");
     expect(screen.getByRole("link", { name: /Previous month/ })).toHaveAttribute(
       "href",
       "/app?month=2026-09&category=Supermercado",

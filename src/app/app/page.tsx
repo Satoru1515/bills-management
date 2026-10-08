@@ -10,6 +10,7 @@ import { CategoryBars } from "./category-bars";
 import { KpiCards } from "./kpi-cards";
 import { MonthPicker } from "./month-picker";
 import { SyncButton } from "./sync-button";
+import { TransactionsTable } from "./transactions-table";
 
 export const metadata = { title: "Bills Management" };
 
@@ -19,7 +20,7 @@ interface AppHomeProps {
 
 /**
  * Dashboard for `?month=YYYY-MM` (the current month by default). `?category=` limits the
- * bank and card summary to one category.
+ * bank and card summary and the transactions table to one category.
  */
 export default async function AppHome({ searchParams }: AppHomeProps) {
   const supabase = await createClient();
@@ -51,6 +52,14 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
         <div className="rounded-lg border border-border bg-surface p-4">
           <BankSummary totals={banks} category={category} />
         </div>
+      </div>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <TransactionsTable
+          month={month}
+          transactions={data.transactions}
+          usdToDopRate={data.usdToDopRate}
+          category={category}
+        />
       </div>
       <SyncButton />
     </>

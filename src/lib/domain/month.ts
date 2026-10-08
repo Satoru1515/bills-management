@@ -87,3 +87,18 @@ export function formatMonthLabel(month: string): string {
 export function formatMonthName(month: string): string {
   return MONTH_NAMES[partsOf(month).month - 1];
 }
+
+/**
+ * Day and time of an ISO timestamp in Dominican Republic time:
+ * `2026-10-04T19:35:00-04:00` → `{ day: "Oct 4", time: "7:35 PM" }`. Null if unparseable.
+ */
+export function formatDayTime(iso: string): { day: string; time: string } | null {
+  const parts = toDrParts(iso);
+  if (!parts) return null;
+  const hour12 = parts.hour % 12 === 0 ? 12 : parts.hour % 12;
+  const period = parts.hour < 12 ? "AM" : "PM";
+  return {
+    day: `${MONTH_NAMES[parts.month - 1].slice(0, 3)} ${parts.day}`,
+    time: `${hour12}:${String(parts.minute).padStart(2, "0")} ${period}`,
+  };
+}

@@ -3,6 +3,7 @@ import {
   currentMonth,
   daysInMonth,
   elapsedDays,
+  formatDayTime,
   formatMonthLabel,
   formatMonthName,
   isMonth,
@@ -91,5 +92,26 @@ describe("formatMonthLabel", () => {
     expect(formatMonthLabel("2026-10")).toBe("October 2026");
     expect(formatMonthLabel("2027-01")).toBe("January 2027");
     expect(formatMonthName("2026-09")).toBe("September");
+  });
+});
+
+describe("formatDayTime", () => {
+  it("shows the day and a 12-hour time in DR time", () => {
+    expect(formatDayTime("2026-10-04T19:35:00-04:00")).toEqual({ day: "Oct 4", time: "7:35 PM" });
+    expect(formatDayTime("2026-10-04T00:05:00-04:00")).toEqual({ day: "Oct 4", time: "12:05 AM" });
+    expect(formatDayTime("2026-10-04T12:00:00-04:00")).toEqual({ day: "Oct 4", time: "12:00 PM" });
+    expect(formatDayTime("2026-01-15T09:07:00-04:00")).toEqual({ day: "Jan 15", time: "9:07 AM" });
+  });
+
+  it("converts other offsets to DR time", () => {
+    // 03:59 UTC on Nov 1 is 23:59 on Oct 31 in Santo Domingo.
+    expect(formatDayTime("2026-11-01T03:59:00+00:00")).toEqual({
+      day: "Oct 31",
+      time: "11:59 PM",
+    });
+  });
+
+  it("returns null for an unparseable date", () => {
+    expect(formatDayTime("not a date")).toBeNull();
   });
 });
