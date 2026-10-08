@@ -69,6 +69,15 @@ Before committing, `npm run lint`, `npm run typecheck` and `npm test` must all p
 
 `npm run db:types` needs the local stack running (`npx supabase start`, which requires Docker). Without Docker, use `npx supabase gen types typescript --project-id <ref> --schema public` against the hosted project. After changing a migration, regenerate the types: `src/lib/supabase/database.types.test.ts` compares them with the schema the migrations build and fails if they drift.
 
+### Google sign-in and the Gmail token
+
+Users sign in with Google through Supabase Auth (`src/lib/auth/google.ts`). The app asks for the read-only Gmail scope (`https://www.googleapis.com/auth/gmail.readonly`) with `access_type=offline` and `prompt=consent`, so Google returns a refresh token on every sign-in. Supabase hands that token over only once, on the session returned by `exchangeCodeForSession` in the auth callback; `storeGmailTokenFromSession` (`src/lib/auth/gmail-token.ts`) encrypts it and saves it in `gmail_connections`.
+
+- `src/lib/crypto.ts`: AES-256-GCM with `ENCRYPTION_KEY`. Payloads look like `v1.<iv>.<tag>.<ciphertext>` (base64url), and the user id is bound as additional authenticated data, so a token copied to another user's row does not decrypt. Changing `ENCRYPTION_KEY` makes every stored token unreadable: users then have to sign in again.
+- `src/lib/repo/gmail-connections.ts`: `saveGmailConnection` and `getRefreshToken`, used with the service-role client only.
+
+For the local stack, `supabase/config.toml` enables the Google provider with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` taken from the environment (export them, or put them in `supabase/.env`, which is git-ignored). On the hosted project, enable Google under Authentication > Providers with the same credentials.
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -106,8 +115,14 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 ├── public/                 # Static assets
 ├── src/
 │   ├── app/                # Next.js App Router pages, layouts and API routes
+│   ├── lib/auth/           # Google sign-in options and Gmail refresh token storage
+│   ├── lib/crypto.ts       # AES-256-GCM encryption for stored secrets
+│   ├── lib/domain/         # Types, categorization, deduplication
+│   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
+│   ├── lib/repo/           # Data access (transactions, Gmail connections)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
 │   └── test/               # Shared test files (smoke test)
+├── supabase/               # Supabase CLI config and SQL migrations
 ├── CLAUDE.md               # Project conventions and rules for the automated routine
 ├── PLAN.md                 # Phased development plan
 ├── PROGRESS.md             # Log of completed tasks
@@ -119,13 +134,8 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 Planned as the phases land (see `PLAN.md`):
 
 ```
-src/lib/domain/     # Types, categorization, deduplication
-src/lib/parsers/    # One pure parser per bank, with fixtures in __fixtures__/
-src/lib/supabase/   # Browser and server Supabase clients
-src/lib/repo/       # Data access (transactions, rules)
 src/lib/gmail/      # Gmail API client
 src/lib/sync/       # Sync pipeline: fetch, parse, categorize, dedupe, upsert
-supabase/           # Supabase CLI config and SQL migrations
 android/            # Capacitor Android project
 ```
 
