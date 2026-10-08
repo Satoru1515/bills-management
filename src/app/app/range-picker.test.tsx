@@ -15,6 +15,21 @@ beforeEach(() => {
 });
 
 describe("RangePicker", () => {
+  it("is collapsed under Advanced filters until opened", () => {
+    const { container } = render(
+      <RangePicker
+        period={rangePeriod("2026-08-01", "2026-10-07")}
+        presets={PRESETS}
+        today="2026-10-07"
+      />,
+    );
+    const details = container.querySelector("details")!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")).toHaveTextContent("Advanced filters · custom range");
+    fireEvent.click(details.querySelector("summary")!);
+    expect(details.open).toBe(true);
+  });
+
   it("links to the quick ranges and marks the one on screen", () => {
     render(<RangePicker period={monthPeriod("2026-10")} presets={PRESETS} today="2026-10-07" />);
 
