@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { loadDashboard } from "@/lib/dashboard/load";
+import { resolveCategory } from "@/lib/dashboard/url";
+import { totalsByBank, totalsByCategory } from "@/lib/domain/breakdown";
 import { formatMonthLabel, resolveMonth } from "@/lib/domain/month";
 import { createClient } from "@/lib/supabase/server";
+import { BankSummary } from "./bank-summary";
+import { CategoryBars } from "./category-bars";
 import { KpiCards } from "./kpi-cards";
 import { MonthPicker } from "./month-picker";
 import { SyncButton } from "./sync-button";
@@ -13,7 +17,10 @@ interface AppHomeProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/** Dashboard for `?month=YYYY-MM` (the current month by default). */
+/**
+ * Dashboard for `?month=YYYY-MM` (the current month by default). `?category=` limits the
+ * bank and card summary to one category.
+ */
 export default async function AppHome({ searchParams }: AppHomeProps) {
   const supabase = await createClient();
   const {
@@ -23,16 +30,28 @@ export default async function AppHome({ searchParams }: AppHomeProps) {
   if (!user) redirect(LOGIN_PATH);
 
   const now = new Date();
-  const month = resolveMonth((await searchParams).month, now);
+  const params = await searchParams;
+  const month = resolveMonth(params.month, now);
+  const category = resolveCategory(params.category);
   const data = await loadDashboard(supabase, user.id, month, now);
+  const categories = totalsByCategory(data.transactions, data.usdToDopRate);
+  const banks = totalsByBank(data.transactions, data.usdToDopRate, category);
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold">{formatMonthLabel(month)}</h2>
-        <MonthPicker month={month} maxMonth={data.maxMonth} />
+        <MonthPicker month={month} maxMonth={data.maxMonth} category={category} />
       </div>
       <KpiCards data={data} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <CategoryBars month={month} totals={categories} selected={category} />
+        </div>
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <BankSummary totals={banks} category={category} />
+        </div>
+      </div>
       <SyncButton />
     </>
   );

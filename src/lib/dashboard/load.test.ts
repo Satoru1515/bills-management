@@ -3,7 +3,6 @@ import { DEFAULT_USD_TO_DOP_RATE } from "@/lib/domain/money";
 import type { TransactionRow } from "@/lib/repo/transactions";
 import { argsOf, createSupabaseMock } from "@/test/supabase-mock";
 import { loadDashboard } from "./load";
-import { dashboardHref } from "./url";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const NOW = new Date("2026-10-07T19:00:00Z");
@@ -85,11 +84,5 @@ describe("loadDashboard", () => {
     await expect(loadDashboard(mock.client, USER, "2026-10", NOW)).rejects.toThrow(
       "listByMonth: boom",
     );
-  });
-});
-
-describe("dashboardHref", () => {
-  it("puts the month in the query", () => {
-    expect(dashboardHref("2026-09")).toBe("/app?month=2026-09");
   });
 });

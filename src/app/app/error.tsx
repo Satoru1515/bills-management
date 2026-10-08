@@ -13,7 +13,7 @@ export default function AppError({
       <button
         type="button"
         onClick={reset}
-        className="rounded-md border border-current/20 px-4 py-2 text-sm font-medium"
+        className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-accent-soft"
       >
         Try again
       </button>

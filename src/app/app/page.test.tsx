@@ -73,6 +73,64 @@ describe("/app page", () => {
     expect(screen.getByRole("button", { name: "Sync now" })).toBeInTheDocument();
   });
 
+  it("filters the bank summary by the category in the query", async () => {
+    const base = {
+      userId: "user-1",
+      date: "2026-10-04T20:07:00-04:00",
+      month: "2026-10",
+      currency: "DOP",
+      kind: "consumo",
+      ignored: false,
+      source: "gmail",
+    } as const;
+    mocks.loadDashboard.mockResolvedValue({
+      ...dashboard("2026-10"),
+      transactions: [
+        {
+          ...base,
+          id: "1",
+          gmailMessageId: "m1",
+          bank: "Scotiabank",
+          cardLast4: "1234",
+          amount: 900,
+          merchant: "BRAVO",
+          category: "Supermercado",
+        },
+        {
+          ...base,
+          id: "2",
+          gmailMessageId: "m2",
+          bank: "APAP",
+          cardLast4: "9876",
+          amount: 300,
+          merchant: "SHELL",
+          category: "Combustible",
+        },
+      ],
+    } satisfies DashboardData);
+
+    render(await AppHome(props({ month: "2026-10", category: "Supermercado" })));
+
+    expect(screen.getByRole("link", { name: /^Supermercado:/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: /^Combustible:/ })).toBeInTheDocument();
+    const banks = screen.getByRole("region", { name: /By bank and card/ });
+    expect(banks).toHaveTextContent("Scotiabank");
+    expect(banks).not.toHaveTextContent("APAP");
+    expect(screen.getByRole("link", { name: /Previous month/ })).toHaveAttribute(
+      "href",
+      "/app?month=2026-09&category=Supermercado",
+    );
+  });
+
+  it("ignores an unknown category", async () => {
+    render(await AppHome(props({ category: "Nope" })));
+    expect(screen.queryByText("Show all categories")).toBeNull();
+    expect(screen.getByRole("heading", { name: "By bank and card" })).toBeInTheDocument();
+  });
+
   it("defaults to the current month", async () => {
     render(await AppHome(props({ month: "not-a-month" })));
     expect(mocks.loadDashboard).toHaveBeenCalledWith(expect.anything(), "user-1", "2026-10", NOW);

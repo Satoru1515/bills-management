@@ -126,7 +126,9 @@ Vercel's Hobby plan only allows daily cron jobs, so the 15-minute schedule needs
 - **Daily average**: the total over the days elapsed (all of them for a past month, up to today for the current one).
 - **vs previous month**: change of the total against the whole previous month.
 
-Sums are done in cents so they do not drift. The header has a month selector (previous / next and a month input).
+Below the cards, `src/lib/domain/breakdown.ts` splits the month by category (one bar each, largest first, with its share of the total) and by bank and card (last 4 digits). Clicking a category bar adds `?category=<name>` and limits the bank and card summary to that category; clicking it again (or **Show all categories**) clears it, and the month selector keeps it. The KPI cards always cover the whole month.
+
+Sums are done in cents so they do not drift. The header has a month selector (previous / next and a month input). Colors are CSS variables in `src/app/globals.css` (`background`, `surface`, `muted`, `border`, `accent`, `accent-soft`, available as Tailwind colors), with a light and a dark set that follow the system theme; amounts use tabular numbers.
 
 ## Environment variables
 

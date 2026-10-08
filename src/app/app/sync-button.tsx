@@ -33,13 +33,13 @@ export function SyncButton() {
         onClick={sync}
         disabled={running}
         aria-busy={running}
-        className="rounded-md border border-current/20 px-4 py-2 text-sm font-medium disabled:opacity-60"
+        className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-accent-soft disabled:opacity-60"
       >
         {running ? "Syncing…" : "Sync now"}
       </button>
       <p
         role="status"
-        className={`text-sm ${feedback?.tone === "error" ? "text-red-600 dark:text-red-400" : "opacity-80"}`}
+        className={`text-sm ${feedback?.tone === "error" ? "text-red-600 dark:text-red-400" : "text-muted"}`}
       >
         {feedback?.message}
       </p>
