@@ -40,7 +40,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 ## Fase 3 — Auth y permiso de Gmail  (rama `fase/3-auth`)
 
 - [x] Supabase Auth con Google, scope `https://www.googleapis.com/auth/gmail.readonly`, `access_type=offline`, `prompt=consent`. Guardar refresh token en `gmail_connections` cifrado con `ENCRYPTION_KEY` (AES-256-GCM, `src/lib/crypto.ts` + tests).
-- [ ] Páginas `/login` y callback. Middleware que protege `/app/*`.
+- [x] Páginas `/login` y callback. Middleware que protege `/app/*`.
 - [ ] `docs/google-cloud-setup.md`: paso a paso para crear el proyecto en Google Cloud, pantalla de consentimiento en modo Testing, usuarios de prueba, credenciales OAuth, URIs de redirección.
 - [ ] Cerrar fase: PR.
 

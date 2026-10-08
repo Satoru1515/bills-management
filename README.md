@@ -76,6 +76,15 @@ Users sign in with Google through Supabase Auth (`src/lib/auth/google.ts`). The 
 - `src/lib/crypto.ts`: AES-256-GCM with `ENCRYPTION_KEY`. Payloads look like `v1.<iv>.<tag>.<ciphertext>` (base64url), and the user id is bound as additional authenticated data, so a token copied to another user's row does not decrypt. Changing `ENCRYPTION_KEY` makes every stored token unreadable: users then have to sign in again.
 - `src/lib/repo/gmail-connections.ts`: `saveGmailConnection` and `getRefreshToken`, used with the service-role client only.
 
+Routes and session handling:
+
+- `/login`: "Continue with Google" button (a Server Action that starts the OAuth flow with `/auth/callback` on the same origin as `redirectTo`). Signed-in users are sent on to `/app`, unless the URL carries an `?error=` to show.
+- `/auth/callback`: exchanges the `?code=` for a session (PKCE cookies), stores the Gmail token and redirects to `?next=` (local paths only) or `/app`; failures go back to `/login?error=<code>` (see `LOGIN_ERRORS` in `src/lib/auth/redirect.ts`).
+- `/app/*`: requires a session. `src/middleware.ts` refreshes the Supabase cookies on every request (`src/lib/supabase/middleware.ts`) and redirects signed-out visitors to `/login?next=<page>`.
+- `/` redirects to `/app`.
+
+Add `<app url>/auth/callback` to the Supabase redirect allow-list (Authentication > URL Configuration) for every origin the app runs on.
+
 For the local stack, `supabase/config.toml` enables the Google provider with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` taken from the environment (export them, or put them in `supabase/.env`, which is git-ignored). On the hosted project, enable Google under Authentication > Providers with the same credentials.
 
 ## Environment variables

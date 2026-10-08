@@ -9,8 +9,10 @@ import { supabasePublicEnv } from "./env";
  * Create a new one per request; never share it between requests.
  */
 export async function createClient() {
-  const { url, anonKey } = supabasePublicEnv();
+  // cookies() first: it marks the route as dynamic, so `next build` never
+  // prerenders a page that needs the session (or the env at build time).
   const cookieStore = await cookies();
+  const { url, anonKey } = supabasePublicEnv();
 
   return createServerClient<Database>(url, anonKey, {
     cookies: {
