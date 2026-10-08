@@ -1,33 +1,39 @@
 import { redirect } from "next/navigation";
 import { LOGIN_PATH } from "@/lib/auth/redirect";
+import { loadDashboard } from "@/lib/dashboard/load";
+import { formatMonthLabel, resolveMonth } from "@/lib/domain/month";
 import { createClient } from "@/lib/supabase/server";
-import { signOutAction } from "./actions";
+import { KpiCards } from "./kpi-cards";
+import { MonthPicker } from "./month-picker";
 import { SyncButton } from "./sync-button";
 
 export const metadata = { title: "Bills Management" };
 
-/** Signed-in home. The middleware already guards /app; this check is a second line. */
-export default async function AppHome() {
+interface AppHomeProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+/** Dashboard for `?month=YYYY-MM` (the current month by default). */
+export default async function AppHome({ searchParams }: AppHomeProps) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // The middleware already guards /app; this check is a second line.
   if (!user) redirect(LOGIN_PATH);
 
+  const now = new Date();
+  const month = resolveMonth((await searchParams).month, now);
+  const data = await loadDashboard(supabase, user.id, month, now);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Bills Management</h1>
-        <form action={signOutAction}>
-          <button type="submit" className="text-sm underline underline-offset-4">
-            Sign out
-          </button>
-        </form>
-      </header>
-      <p className="text-sm opacity-80">
-        Signed in as <strong>{user.email}</strong>. The spending dashboard arrives in a later phase.
-      </p>
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold">{formatMonthLabel(month)}</h2>
+        <MonthPicker month={month} maxMonth={data.maxMonth} />
+      </div>
+      <KpiCards data={data} />
       <SyncButton />
-    </main>
+    </>
   );
 }

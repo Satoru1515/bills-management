@@ -117,6 +117,17 @@ Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
 
 Vercel's Hobby plan only allows daily cron jobs, so the 15-minute schedule needs a Pro plan (or an external scheduler calling the endpoint with the same header).
 
+### Dashboard
+
+`/app?month=YYYY-MM` shows one month (the current one, in Dominican Republic time, when `month` is missing, malformed or in the future). `loadDashboard` (`src/lib/dashboard/load.ts`) reads the month, the month before and the user's USD → DOP rate with the user's own client (RLS applies), and `summarizeMonth` (`src/lib/domain/summary.ts`) computes the KPI cards, leaving out ignored transactions:
+
+- **Total**: pesos plus dollars converted at `profiles.usd_to_dop_rate`, or `DEFAULT_USD_TO_DOP_RATE` (`src/lib/domain/money.ts`) when the user has not set one.
+- **In pesos** / **In dollars**: what was spent in each currency, unconverted.
+- **Daily average**: the total over the days elapsed (all of them for a past month, up to today for the current one).
+- **vs previous month**: change of the total against the whole previous month.
+
+Sums are done in cents so they do not drift. The header has a month selector (previous / next and a month input).
+
 ## Environment variables
 
 All variables are listed with comments in [`.env.example`](.env.example). Copy it to `.env.local` (git-ignored) and fill it in. Never commit real secrets.
@@ -157,10 +168,11 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 │   ├── app/                # Next.js App Router pages, layouts and API routes
 │   ├── lib/auth/           # Google sign-in options and Gmail refresh token storage
 │   ├── lib/crypto.ts       # AES-256-GCM encryption for stored secrets
-│   ├── lib/domain/         # Types, categorization, deduplication
+│   ├── lib/dashboard/      # Data for the /app dashboard
+│   ├── lib/domain/         # Types, categorization, deduplication, months, money, monthly summary
 │   ├── lib/gmail/          # Read-only Gmail API client and MIME-to-text conversion
 │   ├── lib/parsers/        # One pure parser per bank, with fixtures in __fixtures__/
-│   ├── lib/repo/           # Data access (transactions, Gmail connections, category rules, sync runs)
+│   ├── lib/repo/           # Data access (transactions, profiles, Gmail connections, category rules, sync runs)
 │   ├── lib/supabase/       # Browser, server and service-role clients + generated database types
 │   ├── lib/sync/           # Sync pipeline + the manual and cron sync request handlers
 │   └── test/               # Shared test files (smoke test)
