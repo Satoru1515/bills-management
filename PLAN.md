@@ -44,7 +44,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] `docs/google-cloud-setup.md`: paso a paso para crear el proyecto en Google Cloud, pantalla de consentimiento en modo Testing, usuarios de prueba, credenciales OAuth, URIs de redirección.
 - [x] Cerrar fase: PR.
 
-## Fase 4 — Sincronización con Gmail  (rama `fase/4-sync`)
+## Fase 4 — Sincronización con Gmail  (rama `fase/4-sync`) [PR abierto]
 
 - [x] `src/lib/gmail/client.ts`: obtener access token desde el refresh token, `listMessages(query, after)`, `getMessage(id)` con cuerpo en texto plano (decodificar base64url, preferir text/plain, si no convertir HTML a texto).
 - [x] `src/lib/sync/run.ts`: para el usuario, buscar desde `last_sync_at - 1 día` los 4 remitentes, parsear, categorizar, deduplicar, `upsertMany` (no pisar `categoria`/`ignorar` editados), registrar `sync_runs`.
