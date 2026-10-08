@@ -80,7 +80,7 @@ Requested by Satoru on 2026-10-08 after the first local run.
 - [x] Load at least six months: first sync looks back 183 days, and **Import history** on `/app` syncs from a chosen day (up to two years back) via `POST /api/sync` with `{ since }`.
 - [x] Custom date range on the dashboard (`?from=YYYY-MM-DD&to=YYYY-MM-DD`) with presets (last 3 / 6 months, this year), compared against the previous period of the same length.
 - [x] Green / red comparisons: change vs the previous period on the KPI cards and per category, and a monthly trend of the last six months with each month's change.
-- [ ] USD→DOP rate for a specific date from a free API (fawazahmed0 currency-api), offered in Settings to fill the rate.
+- [x] USD→DOP rate for a specific date from a free API (fawazahmed0 currency-api), offered in Settings to fill the rate.
 - [ ] Cerrar fase: PR.
 
 ## Ideas para después (no tocar sin aprobación)

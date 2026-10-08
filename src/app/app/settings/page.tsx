@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { GoogleSignInForm } from "@/app/login/google-sign-in-form";
 import { LOGIN_PATH } from "@/lib/auth/redirect";
 import { DASHBOARD_PATH, SETTINGS_PATH } from "@/lib/dashboard/url";
+import { currentDay } from "@/lib/domain/day";
 import { getGmailConnectionStatus } from "@/lib/repo/gmail-connections";
 import { getUsdToDopRate } from "@/lib/repo/profiles";
 import { getLatestSyncRun } from "@/lib/repo/sync-runs";
@@ -56,7 +57,7 @@ export default async function SettingsPage() {
         <h3 id="settings-rate" className="text-sm font-semibold">
           Exchange rate
         </h3>
-        <RateForm rate={rate} />
+        <RateForm rate={rate} today={currentDay(new Date())} />
       </section>
 
       <section aria-labelledby="settings-gmail" className={SECTION}>

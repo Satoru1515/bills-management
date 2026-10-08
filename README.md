@@ -120,6 +120,10 @@ Two endpoints start a sync (`src/lib/sync/requests.ts`, wired in `src/app/api`):
 
 Vercel's Hobby plan only allows daily cron jobs (a more frequent schedule makes every deployment fail), so the 15-minute schedule needs a Pro plan; on Hobby, use a daily schedule or an external scheduler calling the endpoint with the same header ([`docs/deploy.md`](docs/deploy.md#6-scheduled-sync-cron)).
 
+### Exchange rate
+
+Settings has the USD → DOP rate used for every total. **Get rate** looks up the rate published on a chosen day (`lookupRate` in `src/lib/rates/usd-dop.ts`) from the free [currency API by Fawaz Ahmed](https://github.com/fawazahmed0/exchange-api) (daily rates since March 2024, no key; jsDelivr first, Cloudflare Pages mirror as fallback, and the latest file when today's is not out yet) and fills the box; **Save** stores it. The lookup runs in a server action for signed-in users only and saves nothing by itself.
+
 ### Dashboard
 
 `/app?month=YYYY-MM` shows one month (the current one, in Dominican Republic time, when `month` is missing, malformed or in the future); `/app?from=YYYY-MM-DD&to=YYYY-MM-DD` shows a custom range of days instead (its end capped at today, at most about five years; see `resolvePeriod` in `src/lib/domain/period.ts`). Below the title, quick ranges (**This month**, **Last 3 months**, **Last 6 months**, **This year**) and a From / To form switch between them. `loadDashboard` (`src/lib/dashboard/load.ts`) reads, in one query, the period, the previous period (the month before, or as many days right before a range) and the months of the trend, plus the user's USD → DOP rate, with the user's own client (RLS applies); `summarizePeriod` (`src/lib/domain/summary.ts`) computes the KPI cards, leaving out ignored transactions:

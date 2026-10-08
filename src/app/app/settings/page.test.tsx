@@ -33,7 +33,7 @@ vi.mock("@/app/login/actions", () => ({
   signInWithGoogleAction: vi.fn(),
   startNativeGoogleSignInAction: vi.fn(),
 }));
-vi.mock("./actions", () => ({ saveRateAction: vi.fn() }));
+vi.mock("./actions", () => ({ saveRateAction: vi.fn(), lookupRateAction: vi.fn() }));
 
 import { GOOGLE_GRANTED_SCOPES } from "@/lib/auth/google";
 import SettingsPage from "./page";
