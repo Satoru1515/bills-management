@@ -60,7 +60,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Ajustes: tasa USD→DOP (guardada en `profiles`), estado de la conexión Gmail, última sincronización, botón reconectar.
 - [x] Responsive a 400px de ancho. Cerrar fase: PR.
 
-## Fase 6 — PWA y móvil  (rama `fase/6-mobile`)
+## Fase 6 — PWA y móvil  (rama `fase/6-mobile`) [PR abierto]
 
 - [x] `manifest.webmanifest`, íconos, service worker básico (cache de assets, página offline). Instalable desde el navegador.
 - [x] Capacitor: `npx cap init`, `capacitor.config.ts` apuntando a la URL desplegada, proyecto Android generado (`android/` en el repo). Documentar cómo construir el APK.
