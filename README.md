@@ -83,6 +83,8 @@ Routes and session handling:
 - `/app/*`: requires a session. `src/middleware.ts` refreshes the Supabase cookies on every request (`src/lib/supabase/middleware.ts`) and redirects signed-out visitors to `/login?next=<page>`.
 - `/` redirects to `/app`.
 
+To create the Google OAuth client (consent screen in Testing mode, test users, redirect URIs), follow [`docs/google-cloud-setup.md`](docs/google-cloud-setup.md).
+
 Add `<app url>/auth/callback` to the Supabase redirect allow-list (Authentication > URL Configuration) for every origin the app runs on.
 
 For the local stack, `supabase/config.toml` enables the Google provider with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` taken from the environment (export them, or put them in `supabase/.env`, which is git-ignored). On the hosted project, enable Google under Authentication > Providers with the same credentials.
@@ -119,6 +121,7 @@ The first one is for `ENCRYPTION_KEY`, the second for `CRON_SECRET`.
 ```
 .
 ├── docs/
+│   ├── google-cloud-setup.md # Google Cloud project, OAuth consent screen and client for sign-in + Gmail
 │   ├── parsing-spec.md     # Email formats per bank and category rules (source of truth for parsers)
 │   └── rutina.md           # Prompt of the automated development routine
 ├── public/                 # Static assets
