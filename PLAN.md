@@ -58,7 +58,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Barras por categoría (clic filtra) y resumen por banco/tarjeta. Diseño sobrio: tipografía con números tabulares, tema claro y oscuro.
 - [x] Tabla de transacciones con búsqueda, filtro por banco y categoría; editar categoría en línea; botón ignorar/restaurar.
 - [x] Ajustes: tasa USD→DOP (guardada en `profiles`), estado de la conexión Gmail, última sincronización, botón reconectar.
-- [ ] Responsive a 400px de ancho. Cerrar fase: PR.
+- [x] Responsive a 400px de ancho. Cerrar fase: PR.
 
 ## Fase 6 — PWA y móvil  (rama `fase/6-mobile`)
 

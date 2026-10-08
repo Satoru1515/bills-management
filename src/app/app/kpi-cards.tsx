@@ -54,12 +54,12 @@ export function KpiCards({ data }: { data: DashboardData }) {
       {kpis.map((kpi) => (
         <div
           key={kpi.label}
-          className={`flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 ${
+          className={`flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-surface p-3 sm:p-4 ${
             kpi.wide ? "col-span-2 sm:col-span-3 lg:col-span-1" : ""
           }`}
         >
           <dt className="text-xs font-medium tracking-wide text-muted uppercase">{kpi.label}</dt>
-          <dd className="text-xl font-semibold tabular-nums">{kpi.value}</dd>
+          <dd className="text-lg font-semibold tabular-nums sm:text-xl">{kpi.value}</dd>
           <dd className="text-xs text-muted tabular-nums">{kpi.hint}</dd>
         </div>
       ))}

@@ -233,6 +233,28 @@ describe("TransactionsTable", () => {
     expect(screen.getByRole("button", { name: "Ignore SUPERMERCADO BRAVO" })).toBeVisible();
   });
 
+  it("keeps the table roles and column order for the stacked layout on narrow screens", () => {
+    renderTable();
+
+    // Below `sm` the rows are shown as cards (CSS grid) and the header is visually hidden;
+    // the explicit roles keep screen readers reading it as a table.
+    const table = screen.getByRole("table");
+    expect(table).toHaveAttribute("role", "table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((th) => th.textContent),
+    ).toEqual(["Date", "Merchant", "Category", "Amount", "Actions"]);
+    const bravo = screen.getAllByRole("row")[1];
+    expect(bravo).toHaveAttribute("role", "row");
+    expect(bravo.className).toContain("max-sm:grid");
+    const cells = within(bravo).getAllByRole("cell");
+    expect(cells).toHaveLength(5);
+    cells.forEach((cell) => expect(cell).toHaveAttribute("role", "cell"));
+    expect(cells[3]).toHaveTextContent("RD$ 1,500.50");
+    expect(cells[3].className).toContain("max-sm:row-start-1");
+  });
+
   it("has a message for a month without purchases", () => {
     renderTable({ transactions: [] });
     expect(screen.getByText("No purchases this month.")).toBeInTheDocument();
