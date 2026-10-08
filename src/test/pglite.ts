@@ -8,7 +8,7 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
+import { PGlite, type Transaction } from "@electric-sql/pglite";
 
 export const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
 
@@ -60,6 +60,39 @@ export async function createMigratedDb(): Promise<PGlite> {
     await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
   }
   return db;
+}
+
+/**
+ * Runs `fn` inside a transaction as the API would: role `authenticated` with
+ * the user's id as the JWT `sub`, or role `anon` when `userId` is null.
+ * The transaction is always rolled back, so writes made here do not persist.
+ */
+export async function asUser<T>(
+  db: PGlite,
+  userId: string | null,
+  fn: (tx: Transaction) => Promise<T>,
+): Promise<T> {
+  let result: T | undefined;
+  await db
+    .transaction(async (tx) => {
+      await tx.exec(`set local role ${userId ? "authenticated" : "anon"}`);
+      if (userId) {
+        await tx.query("select set_config('request.jwt.claims', $1, true)", [
+          JSON.stringify({ sub: userId, role: "authenticated" }),
+        ]);
+      }
+      result = await fn(tx);
+      await tx.rollback();
+    })
+    .catch((error: unknown) => {
+      if (!isRollback(error)) throw error;
+    });
+  return result as T;
+}
+
+/** PGlite rejects the transaction promise after an explicit rollback; that is expected here. */
+function isRollback(error: unknown): boolean {
+  return error instanceof Error && /rollback/i.test(error.message);
 }
 
 /** Inserts an auth user (which fires the profile trigger) and returns its id. */

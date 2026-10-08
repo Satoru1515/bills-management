@@ -32,7 +32,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 ## Fase 2 — Base de datos (Supabase)  (rama `fase/2-db`)
 
 - [x] `supabase/` con CLI inicializada y migración `0001_init.sql`: tablas `profiles`, `gmail_connections` (refresh token cifrado, email, last_history_id, last_sync_at), `transactions` (gmail_message_id único por usuario, fecha, mes, banco, tarjeta, monto numeric, moneda, comercio, categoria, ignorar bool, origen), `category_rules` (usuario, keyword, categoria), `sync_runs` (inicio, fin, nuevas, errores).
-- [ ] RLS: cada usuario solo ve y edita sus filas. Políticas + test manual documentado.
+- [x] RLS: cada usuario solo ve y edita sus filas. Políticas + test manual documentado.
 - [ ] `src/lib/supabase/{client,server}.ts` con `@supabase/ssr`. Tipos generados (`npm run db:types`).
 - [ ] `src/lib/repo/transactions.ts`: `upsertMany`, `listByMonth`, `updateCategory`, `setIgnored`. Tests contra un mock.
 - [ ] Cerrar fase: PR.
