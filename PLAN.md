@@ -29,7 +29,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] `src/lib/domain/dedupe.ts`: colapsa los correos repetidos de Scotiabank (misma tarjeta, monto, moneda, comercio y hora ±2 min) + tests.
 - [x] Cerrar fase: todo verde, PR.
 
-## Fase 2 — Base de datos (Supabase)  (rama `fase/2-db`)
+## Fase 2 — Base de datos (Supabase)  (rama `fase/2-db`) [PR abierto]
 
 - [x] `supabase/` con CLI inicializada y migración `0001_init.sql`: tablas `profiles`, `gmail_connections` (refresh token cifrado, email, last_history_id, last_sync_at), `transactions` (gmail_message_id único por usuario, fecha, mes, banco, tarjeta, monto numeric, moneda, comercio, categoria, ignorar bool, origen), `category_rules` (usuario, keyword, categoria), `sync_runs` (inicio, fin, nuevas, errores).
 - [x] RLS: cada usuario solo ve y edita sus filas. Políticas + test manual documentado.
@@ -42,7 +42,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [ ] Supabase Auth con Google, scope `https://www.googleapis.com/auth/gmail.readonly`, `access_type=offline`, `prompt=consent`. Guardar refresh token en `gmail_connections` cifrado con `ENCRYPTION_KEY` (AES-256-GCM, `src/lib/crypto.ts` + tests).
 - [ ] Páginas `/login` y callback. Middleware que protege `/app/*`.
 - [ ] `docs/google-cloud-setup.md`: paso a paso para crear el proyecto en Google Cloud, pantalla de consentimiento en modo Testing, usuarios de prueba, credenciales OAuth, URIs de redirección.
-- [x] Cerrar fase: PR.
+- [ ] Cerrar fase: PR.
 
 ## Fase 4 — Sincronización con Gmail  (rama `fase/4-sync`)
 
@@ -50,7 +50,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [ ] `src/lib/sync/run.ts`: para el usuario, buscar desde `last_sync_at - 1 día` los 4 remitentes, parsear, categorizar, deduplicar, `upsertMany` (no pisar `categoria`/`ignorar` editados), registrar `sync_runs`.
 - [ ] `POST /api/sync` (autenticado) y botón "Actualizar ahora" en la UI. `GET /api/cron/sync` protegido con `CRON_SECRET` para Vercel Cron cada 15 min (`vercel.json`).
 - [ ] Tests del pipeline con fixtures (sin red).
-- [x] Cerrar fase: PR.
+- [ ] Cerrar fase: PR.
 
 ## Fase 5 — Panel (UI)  (rama `fase/5-dashboard`)
 
@@ -65,7 +65,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [ ] `manifest.webmanifest`, íconos, service worker básico (cache de assets, página offline). Instalable desde el navegador.
 - [ ] Capacitor: `npx cap init`, `capacitor.config.ts` apuntando a la URL desplegada, proyecto Android generado (`android/` en el repo). Documentar cómo construir el APK.
 - [ ] Login con Google dentro de Capacitor (abrir en navegador del sistema y volver por deep link). Documentar.
-- [x] Cerrar fase: PR.
+- [ ] Cerrar fase: PR.
 
 ## Fase 7 — Despliegue  (rama `fase/7-deploy`)
 
