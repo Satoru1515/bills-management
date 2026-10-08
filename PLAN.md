@@ -52,7 +52,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Tests del pipeline con fixtures (sin red).
 - [x] Cerrar fase: PR.
 
-## Fase 5 — Panel (UI)  (rama `fase/5-dashboard`)
+## Fase 5 — Panel (UI)  (rama `fase/5-dashboard`) [PR abierto]
 
 - [x] Layout `/app`: cabecera con selector de mes, tarjetas KPI (total del mes en RD$ con USD convertidos, en pesos, en dólares, promedio diario, variación vs mes anterior).
 - [x] Barras por categoría (clic filtra) y resumen por banco/tarjeta. Diseño sobrio: tipografía con números tabulares, tema claro y oscuro.
