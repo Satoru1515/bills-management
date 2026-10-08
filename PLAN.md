@@ -49,7 +49,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] `src/lib/gmail/client.ts`: obtener access token desde el refresh token, `listMessages(query, after)`, `getMessage(id)` con cuerpo en texto plano (decodificar base64url, preferir text/plain, si no convertir HTML a texto).
 - [x] `src/lib/sync/run.ts`: para el usuario, buscar desde `last_sync_at - 1 día` los 4 remitentes, parsear, categorizar, deduplicar, `upsertMany` (no pisar `categoria`/`ignorar` editados), registrar `sync_runs`.
 - [x] `POST /api/sync` (autenticado) y botón "Actualizar ahora" en la UI. `GET /api/cron/sync` protegido con `CRON_SECRET` para Vercel Cron cada 15 min (`vercel.json`).
-- [ ] Tests del pipeline con fixtures (sin red).
+- [x] Tests del pipeline con fixtures (sin red).
 - [ ] Cerrar fase: PR.
 
 ## Fase 5 — Panel (UI)  (rama `fase/5-dashboard`)
