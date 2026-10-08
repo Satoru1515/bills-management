@@ -7,12 +7,13 @@ import { dashboardHref, resolveCategory } from "@/lib/dashboard/url";
 import { banksIn, filterTransactions, totalDop } from "@/lib/domain/filter";
 import { formatMoney } from "@/lib/domain/money";
 import { formatDayTime } from "@/lib/domain/month";
+import { periodPhrase, type Period } from "@/lib/domain/period";
 import { CATEGORIES, type Bank, type Category, type Transaction } from "@/lib/domain/types";
 import { setIgnoredAction, updateCategoryAction } from "./actions";
 
 interface TransactionsTableProps {
-  month: string;
-  /** The month's transactions, newest first, ignored ones included. */
+  period: Period;
+  /** The period's transactions, newest first, ignored ones included. */
   transactions: readonly Transaction[];
   usdToDopRate: number;
   /** The `?category=` filter, shared with the category bars. */
@@ -40,12 +41,12 @@ const ROW_NARROW =
   "max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:gap-y-1 max-sm:py-2.5";
 
 /**
- * The month's purchases with search and bank / category filters. The category of each
+ * The period's purchases with search and bank / category filters. The category of each
  * purchase can be changed in place, and a purchase can be ignored (left out of every total)
  * or restored. Edits show at once and are undone if the server does not save them.
  */
 export function TransactionsTable({
-  month,
+  period,
   transactions,
   usdToDopRate,
   category,
@@ -77,7 +78,7 @@ export function TransactionsTable({
   }
 
   function pickCategory(value: string) {
-    router.push(dashboardHref(month, { category: resolveCategory(value) }));
+    router.push(dashboardHref(period, { category: resolveCategory(value) }));
   }
 
   function clearFilters() {
@@ -146,7 +147,7 @@ export function TransactionsTable({
       {rows.length === 0 ? (
         <p className="text-sm text-muted">
           {transactions.length === 0
-            ? "No purchases this month."
+            ? `No purchases ${periodPhrase(period)}.`
             : "No purchases match these filters."}
         </p>
       ) : (

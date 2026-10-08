@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { BankTotal } from "@/lib/domain/breakdown";
+import { monthPeriod } from "@/lib/domain/period";
 import { BankSummary } from "./bank-summary";
 
 const TOTALS: BankTotal[] = [
@@ -23,7 +24,7 @@ const TOTALS: BankTotal[] = [
 
 describe("BankSummary", () => {
   it("lists each bank with its cards", () => {
-    render(<BankSummary totals={TOTALS} category={null} />);
+    render(<BankSummary period={monthPeriod("2026-10")} totals={TOTALS} category={null} />);
 
     expect(screen.getByRole("heading", { name: "By bank and card" })).toBeInTheDocument();
     const banks = within(screen.getByRole("region", { name: "By bank and card" }))
@@ -40,13 +41,13 @@ describe("BankSummary", () => {
   });
 
   it("names the category it is limited to", () => {
-    render(<BankSummary totals={[]} category="Compras online" />);
+    render(<BankSummary period={monthPeriod("2026-10")} totals={[]} category="Compras online" />);
     expect(screen.getByRole("heading")).toHaveTextContent("By bank and card · Compras online");
     expect(screen.getByText("No Compras online purchases this month.")).toBeInTheDocument();
   });
 
   it("says when there are no purchases", () => {
-    render(<BankSummary totals={[]} category={null} />);
+    render(<BankSummary period={monthPeriod("2026-10")} totals={[]} category={null} />);
     expect(screen.getByText("No purchases this month.")).toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isCategory } from "@/lib/domain/categorize";
+import { isDay, shiftDay } from "@/lib/domain/day";
 import {
   BANKS,
   CURRENCIES,
@@ -124,19 +125,50 @@ export async function listByMonth(
   if (!MONTH_RE.test(month)) {
     throw new RepoError("listByMonth", `invalid month "${month}", expected YYYY-MM`);
   }
+  return listPaged("listByMonth", (page) => page.eq("month", month), client, userId);
+}
 
+/**
+ * All of the user's transactions from day `from` to day `to` (`YYYY-MM-DD`, both included,
+ * DR time), newest first (ignored ones included).
+ */
+export async function listBetween(
+  client: DbClient,
+  userId: string,
+  from: string,
+  to: string,
+): Promise<Transaction[]> {
+  if (!isDay(from) || !isDay(to) || from > to) {
+    throw new RepoError("listBetween", `invalid range "${from}" to "${to}", expected YYYY-MM-DD`);
+  }
+  const start = `${from}T00:00:00-04:00`;
+  const end = `${shiftDay(to, 1)}T00:00:00-04:00`;
+  return listPaged(
+    "listBetween",
+    (page) => page.gte("date", start).lt("date", end),
+    client,
+    userId,
+  );
+}
+
+type TransactionsFilter = ReturnType<ReturnType<DbClient["from"]>["select"]>;
+
+async function listPaged(
+  operation: string,
+  filter: (query: TransactionsFilter) => TransactionsFilter,
+  client: DbClient,
+  userId: string,
+): Promise<Transaction[]> {
   const result: Transaction[] = [];
   for (let from = 0; ; from += LIST_PAGE_SIZE) {
-    const { data, error } = await client
-      .from("transactions")
-      .select(COLUMNS)
-      .eq("user_id", userId)
-      .eq("month", month)
+    const { data, error } = await filter(
+      client.from("transactions").select(COLUMNS).eq("user_id", userId),
+    )
       .order("date", { ascending: false })
       .order("id", { ascending: true })
       .range(from, from + LIST_PAGE_SIZE - 1);
-    if (error) throw toRepoError("listByMonth", error);
-    const page = data ?? [];
+    if (error) throw toRepoError(operation, error);
+    const page = (data ?? []) as TransactionRow[];
     result.push(...page.map(toTransaction));
     if (page.length < LIST_PAGE_SIZE) return result;
   }

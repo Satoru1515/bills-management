@@ -14,6 +14,7 @@ vi.mock("./actions", () => ({
 }));
 
 import type { Transaction } from "@/lib/domain/types";
+import { monthPeriod } from "@/lib/domain/period";
 import { TransactionsTable } from "./transactions-table";
 
 let nextId = 0;
@@ -70,7 +71,7 @@ function renderTable(
 ): ReturnType<typeof render> {
   return render(
     <TransactionsTable
-      month="2026-10"
+      period={monthPeriod("2026-10")}
       transactions={MONTH}
       usdToDopRate={63}
       category={null}

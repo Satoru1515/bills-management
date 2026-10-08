@@ -122,14 +122,16 @@ Vercel's Hobby plan only allows daily cron jobs (a more frequent schedule makes 
 
 ### Dashboard
 
-`/app?month=YYYY-MM` shows one month (the current one, in Dominican Republic time, when `month` is missing, malformed or in the future). `loadDashboard` (`src/lib/dashboard/load.ts`) reads the month, the month before and the user's USD → DOP rate with the user's own client (RLS applies), and `summarizeMonth` (`src/lib/domain/summary.ts`) computes the KPI cards, leaving out ignored transactions:
+`/app?month=YYYY-MM` shows one month (the current one, in Dominican Republic time, when `month` is missing, malformed or in the future); `/app?from=YYYY-MM-DD&to=YYYY-MM-DD` shows a custom range of days instead (its end capped at today, at most about five years; see `resolvePeriod` in `src/lib/domain/period.ts`). Below the title, quick ranges (**This month**, **Last 3 months**, **Last 6 months**, **This year**) and a From / To form switch between them. `loadDashboard` (`src/lib/dashboard/load.ts`) reads, in one query, the period, the previous period (the month before, or as many days right before a range) and the months of the trend, plus the user's USD → DOP rate, with the user's own client (RLS applies); `summarizePeriod` (`src/lib/domain/summary.ts`) computes the KPI cards, leaving out ignored transactions:
 
 - **Total**: pesos plus dollars converted at `profiles.usd_to_dop_rate`, or `DEFAULT_USD_TO_DOP_RATE` (`src/lib/domain/money.ts`) when the user has not set one.
 - **In pesos** / **In dollars**: what was spent in each currency, unconverted.
-- **Daily average**: the total over the days elapsed (all of them for a past month, up to today for the current one).
-- **vs previous month**: change of the total against the whole previous month.
+- **Daily average**: the total over the days elapsed (all of them for a past period, up to today for the current one).
+- **vs previous month** (or **vs previous period**): change of the total against the whole previous period, in red with ▲ when spending went up and in green with ▼ when it went down (`changeTone` in `src/lib/domain/money.ts`, `ChangeBadge` in `src/app/app/change-badge.tsx`).
 
-Below the cards, `src/lib/domain/breakdown.ts` splits the month by category (one bar each, largest first, with its share of the total) and by bank and card (last 4 digits). Clicking a category bar adds `?category=<name>` and limits the bank and card summary to that category; clicking it again (or **Show all categories**) clears it, and the month selector keeps it. The KPI cards always cover the whole month.
+Below the cards, `src/lib/domain/breakdown.ts` splits the month by category (one bar each, largest first, with its share of the total) and by bank and card (last 4 digits). Each category also shows its change against the previous period, with the same colors (`new` when it had no spending before). Clicking a category bar adds `?category=<name>` and limits the bank and card summary to that category; clicking it again (or **Show all categories**) clears it, and the month selector keeps it. The KPI cards always cover the whole period.
+
+**Month by month** lists the spending of each month (at least the last six up to the period's end, up to 24 for a long range; `trendMonths` and `monthlyTrend`) with its change against the month before, colored the same way; each month links to its own dashboard.
 
 Sums are done in cents so they do not drift. The header has a month selector (previous / next and a month input). Colors are CSS variables in `src/app/globals.css` (`background`, `surface`, `muted`, `border`, `accent`, `accent-soft`, available as Tailwind colors), with a light and a dark set that follow the system theme; amounts use tabular numbers.
 

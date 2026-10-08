@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
 import type { DashboardData } from "@/lib/dashboard/load";
-import { formatChange, formatMoney, formatRate } from "@/lib/domain/money";
-import { formatMonthName } from "@/lib/domain/month";
+import { formatMoney, formatRate } from "@/lib/domain/money";
+import { periodLabel, periodName } from "@/lib/domain/period";
+import { ChangeBadge } from "./change-badge";
 
 interface Kpi {
   label: string;
-  value: string;
+  value: ReactNode;
   hint: string;
   wide?: boolean;
 }
@@ -13,10 +15,14 @@ function purchases(count: number): string {
   return count === 1 ? "1 purchase" : `${count} purchases`;
 }
 
-/** The month's headline figures. Amounts use tabular numbers so columns line up. */
+/**
+ * The period's headline figures. Amounts use tabular numbers so columns line up; the change
+ * against the previous period is red when spending went up and green when it went down.
+ */
 export function KpiCards({ data }: { data: DashboardData }) {
   const { current, previous, change, usdToDopRate, defaultRate } = data;
-  const previousName = formatMonthName(previous.month);
+  const isMonth = previous.period.kind === "month";
+  const previousName = isMonth ? periodName(previous.period) : periodLabel(previous.period);
 
   const kpis: Kpi[] = [
     {
@@ -43,8 +49,8 @@ export function KpiCards({ data }: { data: DashboardData }) {
       hint: current.days === 1 ? "over 1 day" : `over ${current.days} days`,
     },
     {
-      label: `vs ${previousName}`,
-      value: change === null ? "—" : formatChange(change),
+      label: isMonth ? `vs ${previousName}` : "vs previous period",
+      value: <ChangeBadge change={change} />,
       hint: `${previousName}: ${formatMoney(previous.totalDop, "DOP")}`,
     },
   ];

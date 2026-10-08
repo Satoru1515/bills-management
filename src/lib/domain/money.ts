@@ -68,3 +68,15 @@ export function formatChange(change: number): string {
   if (percent === 0) return "0.0%";
   return `${percent > 0 ? "+" : "−"}${PERCENT_FORMAT.format(Math.abs(percent))}%`;
 }
+
+export type ChangeTone = "worse" | "better" | "same";
+
+/**
+ * How a change in spending reads: more spending is worse (red), less is better (green), and a
+ * change that rounds to 0.0% is the same.
+ */
+export function changeTone(change: number): ChangeTone {
+  const percent = Math.round(change * 1000) / 10;
+  if (percent === 0) return "same";
+  return percent > 0 ? "worse" : "better";
+}

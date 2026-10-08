@@ -1,8 +1,10 @@
 import type { BankTotal } from "@/lib/domain/breakdown";
 import { formatMoney } from "@/lib/domain/money";
+import { periodPhrase, type Period } from "@/lib/domain/period";
 import type { Category } from "@/lib/domain/types";
 
 interface BankSummaryProps {
+  period: Period;
   totals: readonly BankTotal[];
   /** The category the totals are limited to, if any. */
   category: Category | null;
@@ -13,7 +15,8 @@ function purchases(count: number): string {
 }
 
 /** Spending per bank and, under each bank, per card (last 4 digits only). */
-export function BankSummary({ totals, category }: BankSummaryProps) {
+export function BankSummary({ period, totals, category }: BankSummaryProps) {
+  const phrase = periodPhrase(period);
   return (
     <section aria-labelledby="by-bank" className="flex flex-col gap-3">
       <h3 id="by-bank" className="text-sm font-semibold">
@@ -22,7 +25,7 @@ export function BankSummary({ totals, category }: BankSummaryProps) {
       </h3>
       {totals.length === 0 ? (
         <p className="text-sm text-muted">
-          {category ? `No ${category} purchases this month.` : "No purchases this month."}
+          {category ? `No ${category} purchases ${phrase}.` : `No purchases ${phrase}.`}
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-border">

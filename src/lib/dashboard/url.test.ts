@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { monthPeriod, rangePeriod } from "@/lib/domain/period";
 import { dashboardHref, resolveCategory } from "./url";
 
 describe("dashboardHref", () => {
+  it("links to a period", () => {
+    expect(dashboardHref(monthPeriod("2026-09"))).toBe("/app?month=2026-09");
+    expect(
+      dashboardHref(rangePeriod("2026-04-01", "2026-10-07"), { category: "Supermercado" }),
+    ).toBe("/app?from=2026-04-01&to=2026-10-07&category=Supermercado");
+  });
+
   it("puts the month in the query", () => {
     expect(dashboardHref("2026-09")).toBe("/app?month=2026-09");
     expect(dashboardHref("2026-09", { category: null })).toBe("/app?month=2026-09");

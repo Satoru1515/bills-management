@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_USD_TO_DOP_RATE,
+  changeTone,
   formatChange,
   formatMoney,
   formatRate,
@@ -58,5 +59,14 @@ describe("formatChange", () => {
     expect(formatChange(0)).toBe("0.0%");
     expect(formatChange(0.00001)).toBe("0.0%");
     expect(formatChange(12.5)).toBe("+1,250.0%");
+  });
+});
+
+describe("changeTone", () => {
+  it("reads more spending as worse and less as better", () => {
+    expect(changeTone(0.25)).toBe("worse");
+    expect(changeTone(-0.1)).toBe("better");
+    expect(changeTone(0)).toBe("same");
+    expect(changeTone(-0.0004)).toBe("same");
   });
 });

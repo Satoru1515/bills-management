@@ -5,6 +5,7 @@ import {
   LIST_PAGE_SIZE,
   RepoError,
   UPSERT_CHUNK_SIZE,
+  listBetween,
   listByMonth,
   listStoredMessageIds,
   setIgnored,
@@ -228,6 +229,45 @@ describe("listByMonth", () => {
       name: "RepoError",
       code: "PGRST301",
     });
+  });
+});
+
+describe("listBetween", () => {
+  it("rejects malformed or reversed ranges without querying", async () => {
+    const mock = createSupabaseMock();
+    await expect(listBetween(mock.client, USER, "2026-10-05", "2026-10-01")).rejects.toThrow(
+      RepoError,
+    );
+    await expect(listBetween(mock.client, USER, "2026-02-30", "2026-03-01")).rejects.toThrow(
+      "expected YYYY-MM-DD",
+    );
+    expect(mock.queries).toHaveLength(0);
+  });
+
+  it("filters by user and DR days, both ends included, newest first", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ data: [row()] });
+
+    const result = await listBetween(mock.client, USER, "2026-04-01", "2026-10-31");
+
+    expect(mock.queries[0].calls).toEqual([
+      { method: "select", args: [COLUMNS] },
+      { method: "eq", args: ["user_id", USER] },
+      { method: "gte", args: ["date", "2026-04-01T00:00:00-04:00"] },
+      { method: "lt", args: ["date", "2026-11-01T00:00:00-04:00"] },
+      { method: "order", args: ["date", { ascending: false }] },
+      { method: "order", args: ["id", { ascending: true }] },
+      { method: "range", args: [0, LIST_PAGE_SIZE - 1] },
+    ]);
+    expect(result).toEqual([EXPECTED_TX]);
+  });
+
+  it("throws a RepoError when the query fails", async () => {
+    const mock = createSupabaseMock();
+    mock.respond({ error: { message: "boom" } });
+    await expect(listBetween(mock.client, USER, "2026-10-01", "2026-10-31")).rejects.toThrow(
+      "listBetween: boom",
+    );
   });
 });
 

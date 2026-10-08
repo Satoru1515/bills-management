@@ -26,22 +26,29 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/dashboard/load", () => ({ loadDashboard: mocks.loadDashboard }));
 
 import type { DashboardData } from "@/lib/dashboard/load";
-import { summarizeMonth } from "@/lib/domain/summary";
+import { monthPeriod, previousPeriod, rangePeriod, type Period } from "@/lib/domain/period";
+import { summarizePeriod } from "@/lib/domain/summary";
 import AppHome from "./page";
 
 const NOW = new Date("2026-10-07T19:00:00Z");
 
-function dashboard(month: string): DashboardData {
-  const empty = (m: string) => summarizeMonth([], { month: m, usdToDopRate: 63, now: NOW });
+function dashboard(period: Period): DashboardData {
+  const empty = (p: Period) => summarizePeriod([], { period: p, usdToDopRate: 63, now: NOW });
   return {
-    month,
+    period,
     maxMonth: "2026-10",
+    today: "2026-10-07",
     usdToDopRate: 63,
     defaultRate: true,
-    current: empty(month),
-    previous: empty("2026-08"),
+    current: empty(period),
+    previous: empty(previousPeriod(period)),
     change: null,
     transactions: [],
+    previousTransactions: [],
+    trend: [
+      { month: "2026-09", totalDop: 1000, count: 2, change: null },
+      { month: "2026-10", totalDop: 1500, count: 3, change: 0.5 },
+    ],
   };
 }
 
@@ -54,8 +61,8 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
   mocks.user = { id: "user-1", email: "satoru@example.com" };
   mocks.loadDashboard.mockReset();
-  mocks.loadDashboard.mockImplementation(async (_client, _userId, month: string) =>
-    dashboard(month),
+  mocks.loadDashboard.mockImplementation(async (_client, _userId, period: Period) =>
+    dashboard(period),
   );
 });
 afterEach(() => {
@@ -66,7 +73,12 @@ describe("/app page", () => {
   it("shows the month from the query", async () => {
     render(await AppHome(props({ month: "2026-09" })));
 
-    expect(mocks.loadDashboard).toHaveBeenCalledWith(expect.anything(), "user-1", "2026-09", NOW);
+    expect(mocks.loadDashboard).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+      monthPeriod("2026-09"),
+      NOW,
+    );
     expect(screen.getByRole("heading", { name: "September 2026" })).toBeInTheDocument();
     expect(screen.getByLabelText("Month to show")).toHaveValue("2026-09");
     expect(screen.getByText("Total", { selector: "dt" })).toBeInTheDocument();
@@ -84,7 +96,7 @@ describe("/app page", () => {
       source: "gmail",
     } as const;
     mocks.loadDashboard.mockResolvedValue({
-      ...dashboard("2026-10"),
+      ...dashboard(monthPeriod("2026-10")),
       transactions: [
         {
           ...base,
@@ -137,8 +149,35 @@ describe("/app page", () => {
 
   it("defaults to the current month", async () => {
     render(await AppHome(props({ month: "not-a-month" })));
-    expect(mocks.loadDashboard).toHaveBeenCalledWith(expect.anything(), "user-1", "2026-10", NOW);
+    expect(mocks.loadDashboard).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+      monthPeriod("2026-10"),
+      NOW,
+    );
     expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
+  });
+
+  it("shows a custom range with its quick ranges and the monthly trend", async () => {
+    render(await AppHome(props({ from: "2026-05-01", to: "2026-10-07" })));
+
+    expect(mocks.loadDashboard).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+      rangePeriod("2026-05-01", "2026-10-07"),
+      NOW,
+    );
+    expect(screen.getByRole("heading", { name: "May 1, 2026 – Oct 7, 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Last 6 months" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByLabelText("From")).toHaveValue("2026-05-01");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-10-07");
+    expect(screen.getByText("vs previous period", { selector: "dt" })).toBeInTheDocument();
+    const trend = screen.getByRole("region", { name: /Month by month/ });
+    expect(trend).toHaveTextContent("October 2026");
+    expect(screen.getByRole("button", { name: "Import history" })).toBeInTheDocument();
   });
 
   it("sends signed-out visitors to /login", async () => {
