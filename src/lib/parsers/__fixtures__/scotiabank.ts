@@ -86,3 +86,36 @@ export const digitalWallet = email(
   "2026-10-01T12:00:00.000Z",
   "Hola SATORU,\nTu código para configurar tu billetera digital es 123456. No lo compartas con nadie.",
 );
+
+/**
+ * One purchase reported three times, once per subject (as Scotiabank does), received over
+ * two minutes, oldest first. The card-not-present email arrives first.
+ */
+export const repeatedPurchase = [
+  email(
+    "sc-dup-cnp",
+    "Autorización sin tarjeta de crédito presente",
+    "2026-10-06T22:14:20.000Z",
+    "Hola SATORU,\nSe realizó una autorización sin su Tarjeta de Crédito Scotiabank presente por un monto de $3,420.00 DOP en AMAZON MKTPLACE PMTS con su tarjeta ***7341 a las 06:14 pm AST",
+  ),
+  email(
+    "sc-dup-use",
+    "Uso de tarjeta de crédito",
+    "2026-10-06T22:15:02.000Z",
+    "Hola SATORU,\nSe realizó una autorización por un monto de $3,420.00 DOP en AMAZON MKTPLACE PMTS con su Tarjeta de Crédito Scotiabank ***7341 a las 06:15 pm AST",
+  ),
+  email(
+    "sc-dup-abroad",
+    "Autorización fuera del país",
+    "2026-10-06T22:16:30.000Z",
+    "Hola SATORU,\nSe realizó una autorización fuera del país por un monto de $3,420.00 DOP en AMAZON MKTPLACE PMTS con su Tarjeta de Crédito Scotiabank ***7341 a las 06:16 pm AST",
+  ),
+] as const;
+
+/** A second, real purchase with the same card, amount and merchant 20 minutes later. */
+export const repeatedPurchaseLater = email(
+  "sc-dup-later",
+  "Uso de tarjeta de crédito",
+  "2026-10-06T22:35:10.000Z",
+  "Hola SATORU,\nSe realizó una autorización por un monto de $3,420.00 DOP en AMAZON MKTPLACE PMTS con su Tarjeta de Crédito Scotiabank ***7341 a las 06:35 pm AST",
+);
