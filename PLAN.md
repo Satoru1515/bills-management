@@ -67,7 +67,7 @@ App web (Next.js + Supabase) que lee las notificaciones de consumo de tarjeta qu
 - [x] Login con Google dentro de Capacitor (abrir en navegador del sistema y volver por deep link). Documentar.
 - [x] Cerrar fase: PR.
 
-## Fase 7 — Despliegue  (rama `fase/7-deploy`)
+## Fase 7 — Despliegue  (rama `fase/7-deploy`) [PR abierto]
 
 - [x] `docs/deploy.md`: Vercel + Supabase, variables de entorno, cron, dominio.
 - [x] Checklist de seguridad: tokens cifrados, RLS activa, secretos fuera del repo, rate limit en `/api/sync`.
